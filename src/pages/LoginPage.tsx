@@ -22,10 +22,6 @@ export const LoginPage: React.FC = () => {
     businessName: '',
     businessAddress: ''
   });
-
-  const [showTerms, setShowTerms] = useState(false);
-  const [showPrivacy, setShowPrivacy] = useState(false);
-
   const navigate = useNavigate();
   const { signIn, signUp, resendConfirmation } = useAuth();
 
@@ -183,15 +179,6 @@ export const LoginPage: React.FC = () => {
                     Please allow up to 1-3 business days for verification.
                   </span>
                 </p>
-                <button
-                  onClick={() => {
-                    setShowEmailConfirmation(false);
-                    setMode('login');
-                  }}
-                  className="w-full mt-4 bg-blue-600 text-white py-3 px-4 rounded-xl font-semibold hover:bg-blue-700 transition-all duration-200"
-                >
-                  Back to Login
-                </button>
               </>
             ) : (
               <>
@@ -565,19 +552,11 @@ export const LoginPage: React.FC = () => {
                 />
                 <span className="text-sm text-gray-600 leading-relaxed">
                   I agree to the{' '}
-                  <button
-                    type="button"
-                    className="text-blue-600 hover:text-blue-800 transition-colors font-medium underline"
-                    onClick={() => setShowTerms(true)}
-                  >
+                  <button type="button" className="text-blue-600 hover:text-blue-800 transition-colors font-medium">
                     Terms of Service
                   </button>{' '}
                   and{' '}
-                  <button
-                    type="button"
-                    className="text-blue-600 hover:text-blue-800 transition-colors font-medium underline"
-                    onClick={() => setShowPrivacy(true)}
-                  >
+                  <button type="button" className="text-blue-600 hover:text-blue-800 transition-colors font-medium">
                     Privacy Policy
                   </button>
                 </span>
@@ -604,43 +583,7 @@ export const LoginPage: React.FC = () => {
               )}
             </button>
           </form>
-            {showTerms && (
-              <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60">
-                <div className="bg-white rounded-xl shadow-xl max-w-lg w-full p-6 relative mx-4">
-                  <button
-                    className="absolute top-3 right-3 text-gray-400 hover:text-gray-700"
-                    onClick={() => setShowTerms(false)}
-                    aria-label="Close Terms of Service"
-                  >
-                    ✕
-                  </button>
-                  <h2 className="text-xl font-bold mb-4">Terms of Service</h2>
-                  <div className="text-gray-700 text-sm max-h-96 overflow-y-auto">
-                    {/* TODO: Add Terms of Service content here */}
-                    <p>[Terms of Service content goes here...]</p>
-                  </div>
-                </div>
-              </div>
-            )}
 
-            {showPrivacy && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-                <div className="bg-white rounded-xl shadow-xl max-w-lg w-full p-6 relative mx-4">
-                  <button
-                    className="absolute top-3 right-3 text-gray-400 hover:text-gray-700"
-                    onClick={() => setShowPrivacy(false)}
-                    aria-label="Close Privacy Policy"
-                  >
-                    ✕
-                  </button>
-                  <h2 className="text-xl font-bold mb-4">Privacy Policy</h2>
-                  <div className="text-gray-700 text-sm max-h-96 overflow-y-auto">
-                    {/* TODO: Add Privacy Policy content here */}
-                    <p>[Privacy Policy content goes here...]</p>
-                  </div>
-                </div>
-              </div>
-            )}
           {/* Toggle Login/Register */}
           <div className="mt-6 text-center">
             {mode === 'login' ? (
