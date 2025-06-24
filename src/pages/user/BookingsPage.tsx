@@ -154,7 +154,7 @@ export const BookingsPage: React.FC = () => {
   };
 
   const updateSpotRating = async (spotId: string) => {
-    await fetch('http://localhost:4000/api/update-spot-rating', {
+    await fetch('http://https://park-pass-server.vercel.app/api/update-spot-rating', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ spot_id: spotId }),
