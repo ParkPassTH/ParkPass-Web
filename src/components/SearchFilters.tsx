@@ -1,16 +1,18 @@
 import React, { useState } from 'react';
 import { Search, Filter, MapPin } from 'lucide-react';
 
-interface SearchFiltersProps {
+type SearchFiltersProps = {
   onSearch: (query: string) => void;
   onFilter: (filters: any) => void;
   onFindNearMe: () => void;
-}
+  amenitiesOptions?: string[]; // เพิ่มตรงนี้
+};
 
 export const SearchFilters: React.FC<SearchFiltersProps> = ({
   onSearch,
   onFilter,
-  onFindNearMe
+  onFindNearMe,
+  amenitiesOptions = [],
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
@@ -20,6 +22,19 @@ export const SearchFilters: React.FC<SearchFiltersProps> = ({
     amenities: []
   });
   const [isGettingLocation, setIsGettingLocation] = useState(false);
+
+  const handleAmenityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const amenity = e.target.value;
+    let newAmenities = [...filters.amenities];
+    if (e.target.checked) {
+      newAmenities.push(amenity);
+    } else {
+      newAmenities = newAmenities.filter((a) => a !== amenity);
+    }
+    const newFilters = { ...filters, amenities: newAmenities };
+    setFilters(newFilters);
+    onFilter(newFilters);
+  };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -128,25 +143,17 @@ export const SearchFilters: React.FC<SearchFiltersProps> = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Amenities
-              </label>
-              <div className="space-y-2">
-                {['EV Charging', 'CCTV Security', 'Car Wash'].map((amenity) => (
-                  <label key={amenity} className="flex items-center">
+              <label>Amenities</label>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                {amenitiesOptions.map((amenity) => (
+                  <label key={amenity} className="flex items-center space-x-2">
                     <input
                       type="checkbox"
-                      className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
-                      onChange={(e) => {
-                        const newAmenities = e.target.checked
-                          ? [...filters.amenities, amenity]
-                          : filters.amenities.filter(a => a !== amenity);
-                        const newFilters = { ...filters, amenities: newAmenities };
-                        setFilters(newFilters);
-                        onFilter(newFilters);
-                      }}
+                      value={amenity}
+                      checked={filters.amenities.includes(amenity)}
+                      onChange={handleAmenityChange}
                     />
-                    <span className="ml-2 text-sm text-gray-700">{amenity}</span>
+                    <span>{amenity}</span>
                   </label>
                 ))}
               </div>

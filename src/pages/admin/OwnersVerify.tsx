@@ -12,11 +12,9 @@ export const OwnersVerify: React.FC = () => {
   // โหลด owner ที่รออนุมัติ
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
-    console.log('Session:', data.session);
     // ดู payload JWT
     if (data.session) {
       const userRole = data.session.user.user_metadata?.role;
-      console.log('User role from user_metadata:', userRole);
     }
   });
     

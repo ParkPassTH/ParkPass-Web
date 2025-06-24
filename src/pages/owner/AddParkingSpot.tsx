@@ -556,7 +556,7 @@ export const AddParkingSpot: React.FC = () => {
             </div>
 
             {/* Features */}
-            <div className="bg-gray-50 rounded-lg p-6">
+            {/* <div className="bg-gray-50 rounded-lg p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Features & Settings</h3>
               <div className="space-y-4">
                 {Object.entries(formData.features).map(([key, value]) => (
@@ -591,7 +591,7 @@ export const AddParkingSpot: React.FC = () => {
                   </div>
                 ))}
               </div>
-            </div>
+            </div> */}
 
             {/* Submit Buttons */}
             <div className="flex gap-4 pt-6">

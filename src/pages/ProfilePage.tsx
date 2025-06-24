@@ -171,15 +171,72 @@ export const ProfilePage: React.FC = () => {
     }));
   };
 
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || !e.target.files[0]) return;
+    const file = e.target.files[0];
+    const fileExt = file.name.split('.').pop();
+    const filePath = `${user?.id}.${fileExt}`;
+    
+    console.log('user?.id', user?.id);
+    console.log('supabase.auth.getUser()', await supabase.auth.getUser());
+    // อัปโหลดไฟล์ขึ้น Supabase Storage
+    const { error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(filePath, file, { upsert: true, contentType: file.type });
+
+    if (uploadError) {
+      alert(uploadError.message || 'Upload failed');
+      return;
+    }
+
+    // ดึง public URL
+    const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(filePath);
+    const publicUrl = urlData?.publicUrl;
+
+    // อัปเดต avatar_url ใน profiles
+    if (publicUrl) {
+      const { data, error } = await supabase
+        .from('profiles')
+        .update({ avatar_url: 'test-url' })
+        .eq('id', user?.id)
+        .select();  // ดึงแถวกลับมาด้วย
+
+      console.log('update result', data, error);
+
+      if (updateError) {
+        alert(updateError.message || 'Update profile failed');
+        return;
+      }
+
+      // อัปเดต state ให้รูปเปลี่ยนทันที
+      setUserProfile((prev) => prev ? { ...prev, avatar_url: publicUrl } : prev);
+    }
+  };
+
   const ProfileSection = () => (
     <div className="space-y-6">
       <div className="bg-white rounded-xl shadow-md p-6">
+        <div className="flex items-center mb-6">
+          <img
+            src={userProfile?.avatar_url || '/default-avatar.png'}
+            alt="Avatar"
+            className="w-20 h-20 rounded-full object-cover border-2 border-blue-200 mr-6"
+          />
+          <form
+            onChange={handleAvatarChange}
+          >
+            <label className="cursor-pointer bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+              Change Photo
+              <input type="file" accept="image/*" className="hidden" />
+            </label>
+          </form>
+</div>
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-lg font-semibold text-gray-900">Personal Information</h3>
-          <button className="flex items-center space-x-2 text-blue-600 hover:text-blue-800 transition-colors">
+          {/* <button className="flex items-center space-x-2 text-blue-600 hover:text-blue-800 transition-colors">
             <Edit className="h-4 w-4" />
             <span>Edit</span>
-          </button>
+          </button> */}
         </div>
         <div className="grid md:grid-cols-2 gap-6">
           <div>
@@ -528,8 +585,14 @@ export const ProfilePage: React.FC = () => {
           <div className="lg:col-span-1">
             <div className="bg-white rounded-xl shadow-md p-6">
               <div className="flex items-center space-x-3 mb-6">
-                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                  <User className="h-6 w-6 text-blue-600" />
+                <div className="flex items-center space-x-3 mb-6">
+                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center overflow-hidden">
+                    <img
+                      src={userProfile?.avatar_url || '/default-avatar.png'}
+                      alt="avatar"
+                      className="w-12 h-12 object-cover"
+                    />
+                  </div>
                 </div>
                 <div>
                   <h3 className="font-semibold text-gray-900">{userProfile?.name || 'User'}</h3>

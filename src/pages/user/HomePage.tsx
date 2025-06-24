@@ -12,6 +12,7 @@ import { LatLngExpression } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { ParkingSpotCard } from '../../components/ParkingSpotCard';
+import { useMemo } from 'react';
 
 // Fix for default markers in React Leaflet
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -96,39 +97,55 @@ export const HomePage = () => {
     return R * c;
   };
 
+  const allAmenities = useMemo(() => {
+    const set = new Set<string>();
+    spots.forEach(spot => {
+      (spot.amenities || []).forEach((a: string) => set.add(a));
+    });
+    return Array.from(set);
+  }, [spots]);
+
   const filterSpots = (query: string, spotsToFilter: ParkingSpot[], filters?: any) => {
     let filtered = spotsToFilter.filter(spot => spot.is_approved === true);
 
+    // Search by name or address
     if (query) {
-      filtered = filtered.filter(spot => 
+      filtered = filtered.filter(spot =>
         spot.name.toLowerCase().includes(query.toLowerCase()) ||
         spot.address.toLowerCase().includes(query.toLowerCase())
       );
     }
 
     if (filters) {
-      // Apply price filter
+      // Parking Type filter
+      if (filters.parkingType && filters.parkingType !== 'All Types') {
+        filtered = filtered.filter(spot =>
+          spot.type === filters.parkingType
+        );
+      }
+
+      // Price filter
       if (filters.priceRange && filters.priceRange[1] < 500) {
-        filtered = filtered.filter(spot => 
+        filtered = filtered.filter(spot =>
           spot.price <= filters.priceRange[1]
         );
       }
 
-      // Apply availability filter
+      // Availability filter
       if (filters.availableOnly) {
         filtered = filtered.filter(spot => spot.available_slots > 0);
       }
 
-      // Apply amenities filter
+      // Amenities filter
       if (filters.amenities && filters.amenities.length > 0) {
-        filtered = filtered.filter(spot => 
-          filters.amenities.some((amenity: string) => 
+        filtered = filtered.filter(spot =>
+          filters.amenities.every((amenity: string) =>
             spot.amenities?.includes(amenity)
           )
         );
       }
 
-      // Apply sorting
+      // Sorting
       if (filters.sortBy) {
         switch (filters.sortBy) {
           case 'price_low':
@@ -199,6 +216,7 @@ export const HomePage = () => {
           onSearch={handleSearch}
           onFilter={handleFilter}
           onFindNearMe={handleFindNearMe}
+          amenitiesOptions={allAmenities} // ส่ง options ไป
         />
       </div>
 

@@ -130,7 +130,7 @@ export const LandingPage: React.FC = () => {
             <span className="ml-2 text-xl font-bold">ParkPass</span>
           </div>
           <p className="text-center text-gray-400 mt-4">
-            © 2025 ParkPass. Making parking simple and profitable.
+            © 2024 ParkPass. Making parking simple and profitable.
           </p>
         </div>
       </footer>

@@ -28,46 +28,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    setLoading(true);
-    (async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        setUser(session?.user ?? null);
-
-        if (session?.user) {
-          // ให้เวลา auth client sync ก่อน query
-          setTimeout(() => {
-            loadProfile(session.user.id);
-          }, 100); // หรือใช้ await Promise.resolve()
-        } else {
-          setProfile(null);
-          setLoading(false);
-        }
-      } catch (err) {
-        console.error('getSession error:', err);
-        setUser(null);
-        setProfile(null);
-        setLoading(false);
-      }
-    })();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          await loadProfile(session.user.id);
-        } else {
-          setProfile(null);
-          setLoading(false);
-        }
-      }
-    );
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-
+  // ปรับ loadProfile ไม่ setLoading
   const loadProfile = async (userId: string) => {
     try {
       const { data, error } = await supabase
@@ -79,16 +40,59 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error || !data) {
         console.warn('Profile not found or error:', error?.message);
         setProfile(null);
+        setUser(null);
+        await supabase.auth.signOut();
       } else {
         setProfile(data);
       }
     } catch (err) {
-      console.error('Unexpected error loading profile:', err);
+      console.error('Error loading profile:', err);
       setProfile(null);
-    } finally {
-      setLoading(false); // <-- always happens
+      setUser(null);
+      await supabase.auth.signOut();
     }
   };
+
+  useEffect(() => {
+    let isMounted = true;
+    setLoading(true);
+    (async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!isMounted) return;
+        setUser(session?.user ?? null);
+
+        if (session?.user) {
+          await loadProfile(session.user.id);
+        } else {
+          setProfile(null);
+        }
+      } catch (err) {
+        setUser(null);
+        setProfile(null);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    })();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        setLoading(true);
+        setUser(session?.user ?? null);
+        if (session?.user) {
+          await loadProfile(session.user.id);
+        } else {
+          setProfile(null);
+        }
+        setLoading(false);
+      }
+    );
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
 
   const signIn = async (email: string, password: string) => {
     setLoading(true);

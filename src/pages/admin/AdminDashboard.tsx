@@ -34,7 +34,7 @@ const AdminDashboard: React.FC = () => {
     // Revenue
     const { data: completedBookings } = await supabase
         .from('bookings')
-        .select('price')
+        .select('total_cost')
         .eq('status', 'completed');
 
     const totalRevenue = completedBookings

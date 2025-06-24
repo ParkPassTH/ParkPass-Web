@@ -24,7 +24,6 @@ export const Navbar: React.FC = () => {
   const isActive = (path: string) => location.pathname === path;
 
   const handleLogout = async () => {
-    console.log('Sign out clicked');
     await signOut();
     setShowUserMenu(false);
     setShowMobileMenu(false);
@@ -40,7 +39,6 @@ export const Navbar: React.FC = () => {
 
   const fetchNotifications = async () => {
     if (!user) return;
-    
     setLoading(true);
     try {
       const { data, error } = await supabase
@@ -49,9 +47,7 @@ export const Navbar: React.FC = () => {
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(10);
-        
       if (error) throw error;
-      
       setNotifications(data || []);
       setUnreadCount(data?.filter(n => !n.read_at).length || 0);
     } catch (err) {
@@ -64,11 +60,9 @@ export const Navbar: React.FC = () => {
   const markAsRead = async (notificationId: string) => {
     try {
       await supabase.rpc('mark_notification_read', { notification_id: notificationId });
-      
-      // Update local state
-      setNotifications(prev => 
-        prev.map(notification => 
-          notification.id === notificationId 
+      setNotifications(prev =>
+        prev.map(notification =>
+          notification.id === notificationId
             ? { ...notification, read_at: new Date().toISOString() }
             : notification
         )
@@ -82,9 +76,7 @@ export const Navbar: React.FC = () => {
   const markAllAsRead = async () => {
     try {
       await supabase.rpc('mark_all_notifications_read');
-      
-      // Update local state
-      setNotifications(prev => 
+      setNotifications(prev =>
         prev.map(notification => ({ ...notification, read_at: new Date().toISOString() }))
       );
       setUnreadCount(0);
@@ -100,7 +92,7 @@ export const Navbar: React.FC = () => {
     const diffMins = Math.floor(diffMs / 60000);
     const diffHours = Math.floor(diffMins / 60);
     const diffDays = Math.floor(diffHours / 24);
-    
+
     if (diffMins < 1) return 'just now';
     if (diffMins < 60) return `${diffMins} min ago`;
     if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
@@ -125,49 +117,6 @@ export const Navbar: React.FC = () => {
               <MapPin className="h-8 w-8 text-blue-600" />
               <span className="text-xl font-bold text-gray-900">ParkPass</span>
             </Link>
-
-            {/* Desktop Navigation */}
-{/*             <div className="hidden md:flex items-center space-x-8">
-              <Link
-                to="/"
-                className={`flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                  isActive('/')
-                    ? 'text-blue-600 bg-blue-50'
-                    : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
-                }`}
-              >
-                <Home className="h-4 w-4" />
-                <span>Home</span>
-              </Link>
-
-              {userType === 'customer' && (
-                <Link
-                  to="/bookings"
-                  className={`flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                    isActive('/bookings')
-                      ? 'text-blue-600 bg-blue-50'
-                      : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
-                  }`}
-                >
-                  <Calendar className="h-4 w-4" />
-                  <span>My Bookings</span>
-                </Link>
-              )}
-
-              {(userType === 'owner' || userType === 'admin') && (
-                <Link
-                  to="/admin"
-                  className={`flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                    isActive('/admin')
-                      ? 'text-blue-600 bg-blue-50'
-                      : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
-                  }`}
-                >
-                  <Settings className="h-4 w-4" />
-                  <span>Dashboard</span>
-                </Link>
-              )}
-            </div> */}
 
             {/* Desktop Right Side */}
             <div className="hidden md:flex items-center space-x-4">
@@ -195,7 +144,7 @@ export const Navbar: React.FC = () => {
                     <div className="p-4 border-b border-gray-200 flex justify-between items-center">
                       <h3 className="font-semibold text-gray-900">Notifications</h3>
                       {unreadCount > 0 && (
-                        <button 
+                        <button
                           onClick={markAllAsRead}
                           className="text-xs text-blue-600 hover:text-blue-800 font-medium"
                         >
@@ -233,7 +182,7 @@ export const Navbar: React.FC = () => {
                       )}
                     </div>
                     <div className="p-3 border-t border-gray-200">
-                      <button 
+                      <button
                         onClick={() => setShowNotifications(false)}
                         className="text-sm text-blue-600 hover:text-blue-800 font-medium"
                       >
@@ -253,17 +202,28 @@ export const Navbar: React.FC = () => {
                   }}
                   className="flex items-center space-x-2 p-2 text-gray-600 hover:text-blue-600 hover:bg-gray-100 rounded-lg transition-colors"
                 >
-                  <User className="h-5 w-5" />
+                  <img
+                    src={profile?.avatar_url || '/default-avatar.png'}
+                    alt="avatar"
+                    className="w-8 h-8 rounded-full object-cover border border-blue-200"
+                  />
                   <span className="text-sm font-medium">{profile?.name || user?.email || 'Account'}</span>
                 </button>
                 {showUserMenu && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
-                    <div className="p-3 border-b border-gray-200">
-                      <p className="font-semibold text-gray-900">{profile?.name || 'Account'}</p>
-                      <p className="text-sm text-gray-600">{user?.email}</p>
+                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                    <div className="p-3 border-b border-gray-200 flex items-center space-x-3">
+                      <img
+                        src={profile?.avatar_url || '/default-avatar.png'}
+                        alt="avatar"
+                        className="w-10 h-10 rounded-full object-cover border border-blue-200"
+                      />
+                      <div>
+                        <p className="font-semibold text-gray-900">{profile?.name || 'Account'}</p>
+                        <p className="text-sm text-gray-600">{profile?.email || user?.email}</p>
+                      </div>
                     </div>
                     <div className="py-2">
-                      {(userType === 'owner' ) && (
+                      {(userType === 'owner') && (
                         <Link
                           to="/owner"
                           className="flex items-center space-x-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
@@ -352,18 +312,20 @@ export const Navbar: React.FC = () => {
               {/* User Info */}
               <div className="px-3 py-3 border-b border-gray-200 mb-2">
                 <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                    <User className="h-5 w-5 text-blue-600" />
-                  </div>
+                  <img
+                    src={profile?.avatar_url || '/default-avatar.png'}
+                    alt="avatar"
+                    className="w-10 h-10 rounded-full object-cover border border-blue-200"
+                  />
                   <div>
-                    <p className="font-semibold text-gray-900">{profile?.name || 'Account'}</p>
-                    <p className="text-sm text-gray-600">{user?.email}</p>
+                    <p className="font-semibold text-gray-900">{profile?.name || user?.email || 'Account'}</p>
+                    <p className="text-sm text-gray-600">{profile?.email || user?.email}</p>
                   </div>
                 </div>
               </div>
 
               {/* Navigation Links */}
-              <Link
+{/*               <Link
                 to="/"
                 className={`flex items-center space-x-2 px-3 py-2 rounded-md text-base font-medium transition-colors ${
                   isActive('/')
@@ -374,7 +336,7 @@ export const Navbar: React.FC = () => {
               >
                 <Home className="h-5 w-5" />
                 <span>Home</span>
-              </Link>
+              </Link> */}
 
               {userType === 'customer' && (
                 <Link
@@ -395,7 +357,7 @@ export const Navbar: React.FC = () => {
                 <Link
                   to="/owner"
                   className={`flex items-center space-x-2 px-3 py-2 rounded-md text-base font-medium transition-colors ${
-                    isActive('/bookings')
+                    isActive('/owner')
                       ? 'text-blue-600 bg-blue-50'
                       : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
                   }`}
@@ -435,7 +397,7 @@ export const Navbar: React.FC = () => {
             <div className="p-4 border-b border-gray-200 flex justify-between items-center">
               <h3 className="font-semibold text-gray-900">Notifications</h3>
               {unreadCount > 0 && (
-                <button 
+                <button
                   onClick={markAllAsRead}
                   className="text-xs text-blue-600 hover:text-blue-800 font-medium"
                 >

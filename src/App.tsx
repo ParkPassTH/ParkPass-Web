@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Navbar } from './components/Navbar';
@@ -69,6 +69,21 @@ const ProtectedRoute: React.FC<{
 }> = ({ children, requiredRole }) => {
   const { user, profile, loading } = useAuth();
 
+    useEffect(() => {
+    let timer: NodeJS.Timeout | undefined;
+    if (loading) {
+      timer = setTimeout(() => {
+        // เลือกอย่างใดอย่างหนึ่ง
+        // window.location.reload(); // ถ้าอยาก reload อัตโนมัติ
+        localStorage.clear();
+        window.location.href = '/login'; // force logout อัตโนมัติ
+      }, 1000); // 2 วินาที
+    }
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [loading]);
+
   if (loading) return <div>Loading...</div>;
   if (!user) return <Navigate to="/login" replace />;
   if (!profile) return <div>Profile not found</div>;
@@ -110,6 +125,7 @@ function App() {
 
             {/* Public */}
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
 
             {/* User */}
             <Route path="/home" element={
@@ -126,11 +142,6 @@ function App() {
             <Route path="/bookings" element={
               <ProtectedRoute requiredRole="user">
                 <BookingsPage />
-              </ProtectedRoute>
-            } />
-            <Route path="/profile" element={
-              <ProtectedRoute requiredRole="user">
-                <ProfilePage />
               </ProtectedRoute>
             } />
 
