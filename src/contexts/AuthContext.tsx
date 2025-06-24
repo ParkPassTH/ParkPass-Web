@@ -140,7 +140,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       if (error) throw error;
-
+      
+      if (data.user) {
+        await supabase.from('profiles').update({
+          name: userData.name,
+          role: userData.role || 'user',
+          phone: userData.phone,
+          business_name: userData.businessName,
+          business_address: userData.businessAddress,
+          identity_document_url: userData.identity_document_url,
+          verify_status: 'pending'
+        }).eq('id', data.user.id);
+      }
+      
       console.log('✅ Sign up successful:', data.user?.email);
       
     } catch (error: any) {
