@@ -90,7 +90,27 @@ export const LoginPage: React.FC = () => {
         businessAddress: formData.businessAddress,
         identity_document_url: documentUrl
       };
-      await signUp(formData.email, formData.password, userData);
+      
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+      });
+      if (signUpError) throw signUpError;
+  
+      // 2. Insert profiles
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .insert([{
+          id: signUpData.user.id, // ต้องใช้ user id ที่ได้จาก signUp
+          name: formData.name,
+          phone: formData.phone,
+          role: mode === "owner-register" ? "owner" : "user",
+          businessName: formData.businessName,
+          businessAddress: formData.businessAddress,
+          identity_document_url: documentUrl
+        }]);
+      if (profileError) throw profileError;
+  
       setPendingEmail(formData.email);
       setShowEmailConfirmation(true);
 
