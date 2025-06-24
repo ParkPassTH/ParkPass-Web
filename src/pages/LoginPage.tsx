@@ -82,51 +82,44 @@ export const LoginPage: React.FC = () => {
       }
 
       // Registration
-      const userData = {
-        name: formData.name,
-        phone: formData.phone,
-        role: mode === 'owner-register' ? 'owner' : 'user',
-        businessName: formData.businessName,
-        businessAddress: formData.businessAddress,
-        identity_document_url: documentUrl
-      };
-      
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-      });
-      if (signUpError) throw signUpError;
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+          email: formData.email,
+          password: formData.password,
+        });
+        if (signUpError) throw signUpError;
+        const user = signUpData.user;
+        // 2. Insert profiles
+        const { error: profileError } = await supabase.from("profiles").insert([
+          {
+            id: user?.id,
+            name: formData.name,
+            phone: formData.phone,
+            role: mode === "owner-register" ? "owner" : "user",
+            businessName: formData.businessName,
+            businessAddress: formData.businessAddress,
+            identity_document_url: documentUrl,
+          },
+        ]);
+        if (profileError) throw profileError;
   
-      // 2. Insert profiles
-      const { error: profileError } = await supabase
-        .from("profiles")
-        .insert([{
-          id: signUpData.user.id, // ต้องใช้ user id ที่ได้จาก signUp
-          name: formData.name,
-          phone: formData.phone,
-          role: mode === "owner-register" ? "owner" : "user",
-          businessName: formData.businessName,
-          businessAddress: formData.businessAddress,
-          identity_document_url: documentUrl
-        }]);
-      if (profileError) throw profileError;
-  
-      setPendingEmail(formData.email);
-      setShowEmailConfirmation(true);
-
-    } catch (error: any) {
-      console.error('Authentication error:', error);
-      if (error.message?.includes('Email not confirmed') || error.message?.includes('check your email')) {
         setPendingEmail(formData.email);
         setShowEmailConfirmation(true);
-        setError(null);
-      } else {
-        setError(error.message || 'An error occurred during authentication');
+      } catch (error: any) {
+        console.error("Authentication error:", error);
+        if (
+          error.message?.includes("Email not confirmed") ||
+          error.message?.includes("check your email")
+        ) {
+          setPendingEmail(formData.email);
+          setShowEmailConfirmation(true);
+          setError(null);
+        } else {
+          setError(error.message || "An error occurred during authentication");
+        }
+      } finally {
+        setLoading(false);
       }
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
 
   const handleResendConfirmation = async () => {
     try {
