@@ -55,7 +55,6 @@ export const LoginPage: React.FC = () => {
     e.preventDefault();
     setError(null);
     setLoading(true);
-    
 
     let documentUrl = '';
     try {
@@ -66,9 +65,7 @@ export const LoginPage: React.FC = () => {
           .from('owner-documents')
           .upload(`documents/${Date.now()}_${documentFile.name}`, documentFile);
         if (uploadError) throw uploadError;
-        if (!data || !data.path) throw new Error('Upload failed: No file path returned');
-        const publicUrlObj = supabase.storage.from('owner-documents').getPublicUrl(data.path);
-        documentUrl = publicUrlObj.data.publicUrl;
+        documentUrl = supabase.storage.from('owner-documents').getPublicUrl(data.path).publicUrl;
       }
 
       if (mode === 'login') {
@@ -87,7 +84,6 @@ export const LoginPage: React.FC = () => {
         }
         return;
       }
-      
 
       // Registration
       const userData = {
@@ -98,7 +94,6 @@ export const LoginPage: React.FC = () => {
         businessAddress: formData.businessAddress,
         identity_document_url: documentUrl
       };
-
       await signUp(formData.email, formData.password, userData);
       setPendingEmail(formData.email);
       setShowEmailConfirmation(true);

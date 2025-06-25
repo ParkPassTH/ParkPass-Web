@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, memo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   BarChart3, 
@@ -42,6 +42,218 @@ import {
 import { QRScanner } from '../../components/QRScanner';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+
+// Separate component for Account Name input to prevent re-render issues
+const AccountNameInput = memo(({ 
+  value, 
+  onChange, 
+  placeholder = "Your name or business name",
+  id 
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  id?: string;
+}) => {
+  const [localValue, setLocalValue] = useState(value);
+  const [isFocused, setIsFocused] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
+  
+  // Sync local value with prop value only when not focused and not typing
+  useEffect(() => {
+    if (!isFocused && !isTyping) {
+      setLocalValue(value);
+    }
+  }, [value, isFocused, isTyping]);
+  
+  // Create debounced function with long delay for typing
+  const debouncedOnChangeRef = useRef<any>();
+  
+  useEffect(() => {
+    debouncedOnChangeRef.current = debounce((newValue: string) => {
+      onChange(newValue);
+      setIsTyping(false); // Mark as finished typing
+    }, 2000); // 2 seconds delay - very long to avoid interrupting typing
+    
+    return () => {
+      if (debouncedOnChangeRef.current?.cancel) {
+        debouncedOnChangeRef.current.cancel();
+      }
+    };
+  }, [onChange]);
+  
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value;
+    setLocalValue(newValue);
+    setIsTyping(true); // Mark as currently typing
+    
+    // Call debounced function
+    if (debouncedOnChangeRef.current) {
+      debouncedOnChangeRef.current(newValue);
+    }
+  }, []);
+  
+  const handleFocus = useCallback(() => {
+    setIsFocused(true);
+  }, []);
+  
+  const handleBlur = useCallback(() => {
+    setIsFocused(false);
+    setIsTyping(false);
+    
+    // Cancel any pending debounced calls
+    if (debouncedOnChangeRef.current?.cancel) {
+      debouncedOnChangeRef.current.cancel();
+    }
+    
+    // Immediately sync on blur
+    onChange(localValue);
+  }, [localValue, onChange]);
+  
+  return (
+    <div className="relative">
+      <input 
+        id={id}
+        type="text" 
+        value={localValue}
+        onChange={handleChange}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
+        placeholder={placeholder}
+        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" 
+      />
+      {isTyping && (
+        <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
+          <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+        </div>
+      )}
+    </div>
+  );
+});
+
+// Enhanced debounce function with cancellation
+const debounce = (func: Function, wait: number) => {
+  let timeout: NodeJS.Timeout;
+  const debouncedFunction = function executedFunction(...args: any[]) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+  
+  // Add cancel method
+  debouncedFunction.cancel = () => {
+    clearTimeout(timeout);
+  };
+  
+  return debouncedFunction;
+};
+
+// QR Code Settings Component to isolate re-renders
+const QRCodeSettings = memo(({ 
+  paymentMethods, 
+  handleQrAccountNameChange, 
+  handleQrImageUpload,
+  handlePaymentMethodSave,
+  paymentLoading,
+  qrImagePreview 
+}: {
+  paymentMethods: any;
+  handleQrAccountNameChange: (value: string) => void;
+  handleQrImageUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  handlePaymentMethodSave: (method: 'qr_code') => void;
+  paymentLoading: boolean;
+  qrImagePreview: string;
+}) => {
+  const copyQRCode = () => {
+    if (paymentMethods.qr_code.qr_code_url) {
+      navigator.clipboard.writeText(paymentMethods.qr_code.qr_code_url);
+      alert('QR Code URL copied to clipboard!');
+    }
+  };
+
+  return (
+    <div className="space-y-4 pt-4 border-t border-gray-200">
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Account Name</label>
+        <AccountNameInput
+          key="qr-account-name"
+          id="qr-account-name"
+          value={paymentMethods.qr_code.account_name}
+          onChange={handleQrAccountNameChange}
+          placeholder="Your name or business name"
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">QR Code Image</label>
+        <div className="space-y-3">
+          <div className="flex items-center space-x-3">
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleQrImageUpload}
+              className="hidden"
+              id="qr-upload"
+            />
+            <label
+              htmlFor="qr-upload"
+              className="flex items-center space-x-2 px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
+            >
+              <Upload className="h-4 w-4" />
+              <span>Upload QR Code</span>
+            </label>
+            {(qrImagePreview || paymentMethods.qr_code.qr_code_url) && (
+              <button
+                type="button"
+                onClick={copyQRCode}
+                className="flex items-center space-x-2 px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                <Copy className="h-4 w-4" />
+                <span>Copy URL</span>
+              </button>
+            )}
+          </div>
+          {(qrImagePreview || paymentMethods.qr_code.qr_code_url) && (
+            <div className="flex items-center space-x-3">
+              <img
+                src={qrImagePreview || paymentMethods.qr_code.qr_code_url}
+                alt="QR Code Preview"
+                className="w-24 h-24 object-cover rounded-lg border border-gray-200"
+              />
+              <div className="text-sm text-gray-600">
+                <p>QR Code {qrImagePreview ? 'ready to upload' : 'uploaded successfully'}</p>
+                <p className="text-xs">Customers will see this QR code for payments</p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+      <div className="flex justify-end">
+        <button
+          onClick={() => handlePaymentMethodSave('qr_code')}
+          disabled={paymentLoading}
+          className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+        >
+          {paymentLoading ? (
+            <>
+              <RefreshCw className="h-4 w-4 animate-spin" />
+              <span>Saving...</span>
+            </>
+          ) : (
+            <>
+              <Save className="h-4 w-4" />
+              <span>Save QR Payment</span>
+            </>
+          )}
+        </button>
+      </div>
+    </div>
+  );
+});
+
+QRCodeSettings.displayName = 'QRCodeSettings';
 
 export const OwnerDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'home' | 'dashboard' | 'spots' | 'bookings' | 'reviews' | 'reports' | 'settings' | 'payments'>('home');
@@ -168,7 +380,8 @@ export const OwnerDashboard: React.FC = () => {
       .select(`
         *,
         profiles (name, email),
-        parking_spots (name, address)
+        parking_spots (name, address),
+        vehicles (make, model, license_plate, color)
       `)
       .in('spot_id', spotIds)
       .order('created_at', { ascending: false });
@@ -204,8 +417,10 @@ export const OwnerDashboard: React.FC = () => {
         status,
         payment_status,
         created_at,
+        vehicle_id,
         profiles:user_id (name, email),
-        parking_spots:spot_id (name, address)
+        parking_spots:spot_id (name, address),
+        vehicles:vehicle_id (make, model, license_plate, color)
       `)
       .in('spot_id', spotIds)
       .eq('payment_status', 'pending')
@@ -344,6 +559,29 @@ export const OwnerDashboard: React.FC = () => {
     }));
   };
 
+  // Handler for account name changes - more specific handlers to reduce re-renders
+  const handleQrAccountNameChange = useCallback((value: string) => {
+    setPaymentMethods(prev => ({
+      ...prev,
+      qr_code: { ...prev.qr_code, account_name: value }
+    }));
+  }, []);
+
+  const handleBankAccountNameChange = useCallback((value: string) => {
+    setPaymentMethods(prev => ({
+      ...prev,
+      bank_account: { ...prev.bank_account, account_name: value }
+    }));
+  }, []);
+
+  // Generic handler (keeping for compatibility)
+  const handleAccountNameChange = useCallback((method: 'qr_code' | 'bank_account', value: string) => {
+    setPaymentMethods(prev => ({
+      ...prev,
+      [method]: { ...prev[method], account_name: value }
+    }));
+  }, []);
+
   const handlePaymentMethodSave = async (method: 'qr_code' | 'bank_transfer') => {
     if (!profile?.id) {
       alert('User profile not found');
@@ -414,7 +652,7 @@ export const OwnerDashboard: React.FC = () => {
       alert(`Failed to save payment method: ${err.message}`);
     } finally {
       setPaymentLoading(false);
-    }
+    } 
   };
 
   const copyQRCode = () => {
@@ -472,27 +710,69 @@ export const OwnerDashboard: React.FC = () => {
     setScanMessage('Processing scan...');
     try {
       const isPin = /^\d{4}$/.test(data);
+      
+      // For PIN, we need to be extra careful about security
+      let searchQuery;
+      if (isPin) {
+        searchQuery = `pin.eq.${data}`;
+      } else {
+        // For QR Code, try to parse JSON first
+        try {
+          const qrData = JSON.parse(data);
+          if (qrData.type === 'parking_verification' && qrData.bookingId && qrData.spotId) {
+            // This is the new secure QR format
+            searchQuery = `id.eq.${qrData.bookingId}`;
+          } else {
+            // Fallback to old format
+            searchQuery = `qr_code.eq.${data}`;
+          }
+        } catch {
+          // Not JSON, treat as old QR format
+          searchQuery = `qr_code.eq.${data}`;
+        }
+      }
+      
       const { data: bookingData, error } = await supabase
         .from('bookings')
         .select('*')
-        .or(isPin ? `pin.eq.${data}` : `qr_code.eq.${data}`)
+        .or(searchQuery)
         .single();
+        
       if (error || !bookingData) {
         setScanStatus('error');
         setScanMessage('Invalid QR code or PIN. No matching booking found.');
         return;
       }
+      
+      // Additional security check for QR codes with spot verification
+      if (!isPin) {
+        try {
+          const qrData = JSON.parse(data);
+          if (qrData.type === 'parking_verification' && qrData.spotId) {
+            if (qrData.spotId !== bookingData.spot_id) {
+              setScanStatus('error');
+              setScanMessage('QR code is not valid for this parking spot.');
+              return;
+            }
+          }
+        } catch {
+          // Old QR format, no additional check needed
+        }
+      }
+      
       const { data: spotData } = await supabase
         .from('parking_spots')
         .select('*')
         .eq('id', bookingData.spot_id)
         .eq('owner_id', profile?.id)
         .single();
+        
       if (!spotData) {
         setScanStatus('error');
         setScanMessage('This booking is not for one of your parking spots.');
         return;
       }
+      
       if (bookingData.payment_status !== 'verified') {
         setScanStatus('error');
         setScanMessage('Payment for this booking has not been verified yet.');
@@ -545,11 +825,15 @@ export const OwnerDashboard: React.FC = () => {
         setScanStatus('success');
         setScanMessage('Exit confirmed! Booking is now completed.');
       } else if (bookingData.status === 'completed') {
-        setScanStatus('error');
-        setScanMessage('This booking has already been completed.');
+        setScanStatus('success');
+        setScanMessage('This booking has already been completed. QR/PIN verified - Status: COMPLETED');
+      } else if (bookingData.status === 'cancelled') {
+        // แสดงสถานะยกเลิกแต่ยังทำการยืนยันได้
+        setScanStatus('success');
+        setScanMessage(`การจอง #${bookingData.id.slice(-6)} ถูกยกเลิกไปแล้ว - QR/PIN ยืนยันสำเร็จ`);
       } else {
-        setScanStatus('error');
-        setScanMessage(`Booking is in ${bookingData.status} status and cannot be processed.`);
+        setScanStatus('success');
+        setScanMessage(`QR/PIN verified. Booking status: ${bookingData.status.toUpperCase()}`);
       }
   
       setTimeout(() => {
@@ -777,7 +1061,7 @@ export const OwnerDashboard: React.FC = () => {
       <div className="bg-white rounded-xl shadow-md p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
         <div className="space-y-4">
-          {bookings.slice(0, 4).map((booking, index) => (
+          {bookings.slice(0, 4).map((booking) => (
             <div key={booking.id} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
               <div className={`w-2 h-2 rounded-full ${
                 booking.status === 'confirmed' ? 'bg-blue-600' :
@@ -932,7 +1216,7 @@ export const OwnerDashboard: React.FC = () => {
                 <th className="text-left py-2 px-2 font-semibold text-gray-900">Customer</th>
                 <th className="text-left py-2 px-2 font-semibold text-gray-900">Status</th>
                 <th className="hidden sm:table-cell text-left py-2 px-2 font-semibold text-gray-900">Amount</th>
-                <th className="hidden sm:table-cell text-left py-2 px-2 font-semibold text-gray-900">Actions</th>
+                {/* <th className="hidden sm:table-cell text-left py-2 px-2 font-semibold text-gray-900">Actions</th> */}
               </tr>
             </thead>
             <tbody>
@@ -971,9 +1255,9 @@ export const OwnerDashboard: React.FC = () => {
                   <td className="hidden sm:table-cell py-2 px-2 font-semibold text-gray-900">${booking.total_cost}</td>
                   <td className="hidden sm:table-cell py-2 px-2">
                     <div className="flex items-center space-x-1">
-                      <button className="p-1 hover:bg-gray-200 rounded transition-colors">
+                      {/* <button className="p-1 hover:bg-gray-200 rounded transition-colors">
                         <Eye className="h-4 w-4 text-gray-500" />
-                      </button>
+                      </button> */}
                       {booking.status === 'active' && (
                         <button className="p-1 hover:bg-red-100 rounded transition-colors">
                           <AlertTriangle className="h-4 w-4 text-red-500" />
@@ -1194,83 +1478,14 @@ export const OwnerDashboard: React.FC = () => {
             </div>
             
             {paymentMethods.qr_code.enabled && (
-              <div className="space-y-4 pt-4 border-t border-gray-200">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Account Name</label>
-                  <input 
-                    type="text" 
-                    value={paymentMethods.qr_code.account_name}
-                    onChange={(e) => setPaymentMethods(prev => ({
-                      ...prev,
-                      qr_code: { ...prev.qr_code, account_name: e.target.value }
-                    }))}
-                    placeholder="Your name or business name"
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" 
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">QR Code Image</label>
-                  <div className="space-y-3">
-                    <div className="flex items-center space-x-3">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleQrImageUpload}
-                        className="hidden"
-                        id="qr-upload"
-                      />
-                      <label
-                        htmlFor="qr-upload"
-                        className="flex items-center space-x-2 px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
-                      >
-                        <Upload className="h-4 w-4" />
-                        <span>Upload QR Code</span>
-                      </label>
-                      {(qrImagePreview || paymentMethods.qr_code.qr_code_url) && (
-                        <button
-                          type="button"
-                          onClick={copyQRCode}
-                          className="px-3 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-                        >
-                          <Copy className="h-4 w-4" />
-                        </button>
-                      )}
-                    </div>
-                    {(qrImagePreview || paymentMethods.qr_code.qr_code_url) && (
-                      <div className="flex items-center space-x-3">
-                        <img
-                          src={qrImagePreview || paymentMethods.qr_code.qr_code_url}
-                          alt="QR Code Preview"
-                          className="w-24 h-24 object-cover rounded-lg border border-gray-200"
-                        />
-                        <div className="text-sm text-gray-600">
-                          <p>QR Code {qrImagePreview ? 'ready to upload' : 'uploaded successfully'}</p>
-                          <p className="text-xs">Customers will see this QR code for payments</p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <div className="flex justify-end">
-                  <button
-                    onClick={() => handlePaymentMethodSave('qr_code')}
-                    disabled={paymentLoading}
-                    className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
-                  >
-                    {paymentLoading ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                        <span>Saving...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Save className="h-4 w-4" />
-                        <span>Save QR Payment</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
+              <QRCodeSettings
+                paymentMethods={paymentMethods}
+                handleQrAccountNameChange={handleQrAccountNameChange}
+                handleQrImageUpload={handleQrImageUpload}
+                handlePaymentMethodSave={handlePaymentMethodSave}
+                paymentLoading={paymentLoading}
+                qrImagePreview={qrImagePreview}
+              />
             )}
           </div>
 
@@ -1378,6 +1593,11 @@ export const OwnerDashboard: React.FC = () => {
                       <p className="text-sm text-gray-600">
                         {payment.booking?.profiles?.name || 'Unknown customer'}
                       </p>
+                      {payment.booking?.vehicles && (
+                        <p className="text-sm text-gray-600">
+                          🚗 {payment.booking.vehicles.license_plate} ({payment.booking.vehicles.make} {payment.booking.vehicles.model})
+                        </p>
+                      )}
                       <div className="flex items-center space-x-2 text-sm">
                         <span className="text-blue-600 font-medium">${payment.booking?.total_cost || 0}</span>
                         <span className="text-gray-500">•</span>
@@ -1608,6 +1828,23 @@ export const OwnerDashboard: React.FC = () => {
                             {selectedPayment.booking?.parking_spots?.address || 'No address'}
                           </p>
                         </div>
+                        
+                        {selectedPayment.booking?.vehicles && (
+                          <div className="pt-3 border-t border-gray-200">
+                            <p className="text-sm text-gray-600">Vehicle Information</p>
+                            <p className="font-medium text-gray-900">
+                              🚗 {selectedPayment.booking.vehicles.license_plate}
+                            </p>
+                            <p className="text-sm text-gray-600">
+                              {selectedPayment.booking.vehicles.make} {selectedPayment.booking.vehicles.model}
+                            </p>
+                            {selectedPayment.booking.vehicles.color && (
+                              <p className="text-sm text-gray-600">
+                                Color: {selectedPayment.booking.vehicles.color}
+                              </p>
+                            )}
+                          </div>
+                        )}
                         
                         <div className="pt-3 border-t border-gray-200">
                           <p className="text-sm text-gray-600">Booking Time</p>

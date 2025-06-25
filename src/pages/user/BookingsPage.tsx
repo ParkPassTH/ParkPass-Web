@@ -107,7 +107,7 @@ export const BookingsPage: React.FC = () => {
     const date = new Date(dateString);
     return {
       date: date.toLocaleDateString(),
-      time: date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      time: date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })
     };
   };
 

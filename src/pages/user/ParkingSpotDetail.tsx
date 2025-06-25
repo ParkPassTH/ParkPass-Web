@@ -11,6 +11,9 @@ import {
   Zap,
   Shield,
   Umbrella,
+  Wifi, 
+  Coffee, 
+  Wrench,
   ArrowLeft,
   ChevronLeft,
   ChevronRight,
@@ -183,13 +186,18 @@ export const ParkingSpotDetail: React.FC = () => {
     return `$${price}/${type}`;
   };
 
+  const amenityIconMap: Record<string, React.ElementType> = {
+    'EV Charging': Zap,
+    'CCTV Security': Shield,
+    'Covered Parking': Umbrella,
+    'Free WiFi': Wifi,
+    'Cafe Nearby': Coffee,
+    'Car Maintenance': Wrench,
+  };
+
   const getAmenityIcon = (amenity: string) => {
-    switch (amenity.toLowerCase()) {
-      case 'ev charging': return <Zap className="h-5 w-5 text-green-600" />;
-      case 'cctv security': return <Shield className="h-5 w-5 text-blue-600" />;
-      case 'covered parking': return <Umbrella className="h-5 w-5 text-purple-600" />;
-      default: return <Check className="h-5 w-5 text-gray-600" />;
-    }
+    const Icon = amenityIconMap[amenity] || Car;
+    return <Icon className="h-5 w-5 text-blue-600" />;
   };
 
   // Parse operating hours

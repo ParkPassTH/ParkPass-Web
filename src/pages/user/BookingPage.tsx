@@ -30,6 +30,7 @@ export const BookingPage: React.FC = () => {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [selectedVehicle, setSelectedVehicle] = useState<string>('');
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
+  const [spot, setSpot] = useState<ParkingSpot | null>(null);
   
   // Set default times (1 hour from now for start, 3 hours from now for end)
   const getDefaultTimes = () => {
@@ -42,7 +43,133 @@ export const BookingPage: React.FC = () => {
       end: endTime.toTimeString().substring(0, 5)
     };
   };
+  const [selectedSlots, setSelectedSlots] = useState<string[]>([]);
   
+  // ฟังก์ชัน toggle slot
+  function toggleSlot(slotStart: string) {
+    setSelectedSlots((prev) =>
+      prev.includes(slotStart)
+        ? prev.filter((s) => s !== slotStart)
+        : [...prev, slotStart].sort()
+    );
+  }
+  let hours: any = undefined;
+  if (spot?.operating_hours) {
+    if (typeof spot.operating_hours === "string") {
+      try {
+        hours = JSON.parse(spot.operating_hours);
+      } catch (e) {
+  
+      }
+    } else {
+      hours = spot.operating_hours;
+    }
+  }
+  const days = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+  const jsDay = new Date(startDate).getDay();
+  const selectedDay = days[(jsDay + 6) % 7];
+
+  // หา key แบบ normalize ด้วย Object.entries
+  let dayHours = undefined;
+  if (hours) {
+    const entries = Object.entries(hours);
+    const found = entries.find(
+      ([k]) => k.trim().toLowerCase() === selectedDay.trim().toLowerCase()
+    );
+    dayHours = found ? found[1] : undefined;
+    // log keys จริงๆ
+  }
+  
+  let isOpen = false;
+  let openTime: string = "";
+  let closeTime: string = "";
+
+  if (spot?.operating_hours === "24/7 Access") {
+    isOpen = true;
+    openTime = "00:00";
+    closeTime = "24:00";
+  } else if (dayHours?.isOpen) {
+    isOpen = true;
+    if (dayHours.is24Hours) {
+      openTime = "00:00";
+      closeTime = "24:00";
+    } else {
+      openTime = dayHours.openTime || "09:00";
+      closeTime = dayHours.closeTime || "17:00";
+    }
+  } else {
+    isOpen = false;
+  }
+
+
+  const [bookedSlots, setBookedSlots] = useState<{start: string, end: string}[]>([]);
+  function generateTimeSlots(open = "09:00", close = "17:00") {
+    const slots = [];
+    let [h, m] = open.split(":").map(Number);
+    let [endH, endM] = close.split(":").map(Number);
+    // ถ้า closeTime เป็น 24:00 ให้ endH = 24, endM = 0
+    if (close === "24:00") {
+      endH = 24;
+      endM = 0;
+    }
+    while (h < endH || (h === endH && m < endM)) {
+      const start = `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
+      let nextH = h, nextM = m + 60;
+      if (nextM >= 60) { nextH += 1; nextM -= 60; }
+      const end = `${nextH.toString().padStart(2, "0")}:${nextM.toString().padStart(2, "0")}`;
+      slots.push({ start, end });
+      h = nextH; m = nextM;
+    }
+    return slots;
+  }
+  const slots = generateTimeSlots(openTime, closeTime);
+
+  useEffect(() => {
+    if (selectedSlots.length > 0) {
+      // sort slot ตามเวลา
+      const sorted = [...selectedSlots].sort();
+      setStartTime(sorted[0]);
+      // หา end ของ slot สุดท้าย
+      const lastSlot = slots.find(slot => slot.start === sorted[sorted.length - 1]);
+      if (lastSlot) setEndTime(lastSlot.end);
+    } else {
+      // ถ้าไม่เลือก slot ให้ reset เป็นค่าว่าง
+      setStartTime('');
+      setEndTime('');
+    }
+  }, [selectedSlots, slots]);
+
+  useEffect(() => {
+    const fetchBookedSlots = async () => {
+      if (!spot || !startDate) return;
+      const { data, error } = await supabase
+        .from('bookings')
+        .select('start_time, end_time')
+        .eq('spot_id', spot.id)
+        .eq('status', 'confirmed')
+        .gte('start_time', `${startDate}T00:00:00`)
+        .lt('start_time', `${startDate}T23:59:59`);
+      if (!error && data) {
+        setBookedSlots(
+          data.map((b: any) => ({
+            start: b.start_time.slice(11, 16),
+            end: b.end_time.slice(11, 16)
+          }))
+        );
+      }
+    };
+    fetchBookedSlots();
+  }, [spot, startDate]);
+
+  function isSlotBooked(slot: { start: string, end: string }) {
+  // ถ้าเวลาเริ่ม >= เวลาสิ้นสุด ไม่ต้องเช็ค
+    if (slot.start >= slot.end) return true;
+    return bookedSlots.some(
+      b => (slot.start < b.end && slot.end > b.start) // overlap
+    );
+  }
+
+
   const defaultTimes = getDefaultTimes();
   const [startTime, setStartTime] = useState(defaultTimes.start);
   const [endTime, setEndTime] = useState(defaultTimes.end);
@@ -51,7 +178,6 @@ export const BookingPage: React.FC = () => {
   const [bookingId, setBookingId] = useState<string>('');
   const [qrCode, setQrCode] = useState<string>('');
   const [pin, setPin] = useState<string>('');
-  const [spot, setSpot] = useState<ParkingSpot | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [vehiclesLoading, setVehiclesLoading] = useState(true);
@@ -61,7 +187,7 @@ export const BookingPage: React.FC = () => {
   const [ownerPaymentMethod, setOwnerPaymentMethod] = useState<PaymentMethod | null>(null);
   const [paymentMethodsLoading, setPaymentMethodsLoading] = useState(true);
   const [showQRCodeOverlay, setShowQRCodeOverlay] = useState(false);
-
+  
   // Check for existing booking session on mount
   useEffect(() => {
     const session = getBookingSession();
@@ -96,7 +222,7 @@ export const BookingPage: React.FC = () => {
       // Generate new booking ID, QR code and PIN with unique identifiers
       const newBookingId = 'BK' + Date.now();
       const newQrCode = `BK-${id}-${crypto.randomUUID()}`;
-      const newPin = Math.floor(1000 + Math.random() * 9000).toString();
+      const newPin = generateSecurePin(newBookingId, id || '');
       
       setBookingId(newBookingId);
       setQrCode(newQrCode);
@@ -243,6 +369,9 @@ export const BookingPage: React.FC = () => {
         // Generate a fresh unique QR code for the actual booking to prevent duplicates
         const uniqueQrCode = `BK-${id}-${crypto.randomUUID()}`;
         
+        // Generate secure PIN based on booking and spot
+        const securePin = generateSecurePin(bookingId, id || '');
+        
         // Format the start and end times correctly for the database
         // Use ISO format with the correct timezone
         const startDateTime = new Date(`${startDate}T${startTime}`);
@@ -262,7 +391,7 @@ export const BookingPage: React.FC = () => {
             status: 'pending',
             payment_status: 'pending',
             qr_code: uniqueQrCode,
-            pin: pin
+            pin: securePin
           })
           .select();
           
@@ -270,8 +399,9 @@ export const BookingPage: React.FC = () => {
         
         if (data && data.length > 0) {
           setCreatedBookingId(data[0].id);
-          // Update the QR code state with the one actually used in the database
+          // Update the QR code and PIN state with the ones actually used in the database
           setQrCode(uniqueQrCode);
+          setPin(securePin);
           // Move to payment slip upload step
           setStep('upload');
           setShowPaymentSlipUpload(true);
@@ -295,45 +425,81 @@ export const BookingPage: React.FC = () => {
     alert(`${type} copied to clipboard!`);
   };
 
-  // Function to download QR code with PIN
-  const downloadQR = () => {
-    // Create a canvas element to render the QR code
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    const qrImage = document.getElementById('booking-qr-code') as HTMLImageElement;
-    
-    if (!qrImage || !ctx) {
-      alert('Unable to generate QR code image');
-      return;
+  // Function to generate secure PIN from booking and spot ID
+  const generateSecurePin = (bookingId: string, spotId: string) => {
+    // Create a hash-like string from booking and spot ID
+    const combined = `${bookingId}-${spotId}`;
+    let hash = 0;
+    for (let i = 0; i < combined.length; i++) {
+      const char = combined.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32-bit integer
     }
-    
-    // Set canvas dimensions
-    canvas.width = qrImage.width;
-    canvas.height = qrImage.height + 60; // Extra space for text
-    
-    // Fill background
-    ctx.fillStyle = '#FFFFFF';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
-    // Draw QR code
-    ctx.drawImage(qrImage, 0, 0);
-    
-    // Add PIN text
-    ctx.fillStyle = '#000000';
-    ctx.font = 'bold 16px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText(`PIN: ${pin}`, canvas.width / 2, qrImage.height + 30);
-    
-    // Convert to data URL
-    const dataUrl = canvas.toDataURL('image/png');
-    
-    // Create download link
-    const downloadLink = document.createElement('a');
-    downloadLink.href = dataUrl;
-    downloadLink.download = `parkpass-qr-${bookingId.slice(-6)}.png`;
-    document.body.appendChild(downloadLink);
-    downloadLink.click();
-    document.body.removeChild(downloadLink);
+    // Convert to positive 4-digit number
+    return Math.abs(hash % 9000 + 1000).toString();
+  };
+
+  // Function to download QR code with PIN
+  const downloadQR = async () => {
+    try {
+      const qrImage = document.getElementById('booking-qr-code') as HTMLImageElement;
+      
+      if (!qrImage) {
+        alert('QR code not found');
+        return;
+      }
+
+      // Create a canvas element to render the QR code
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      
+      if (!ctx) {
+        alert('Unable to create canvas');
+        return;
+      }
+
+      // Wait for image to load if it hasn't already
+      if (!qrImage.complete) {
+        await new Promise<void>((resolve, reject) => {
+          qrImage.onload = () => resolve();
+          qrImage.onerror = () => reject(new Error('Failed to load QR image'));
+          setTimeout(() => reject(new Error('Timeout loading QR image')), 5000);
+        });
+      }
+
+      // Set canvas dimensions
+      const qrSize = 160; // Match the size from QRCodeGenerator
+      canvas.width = qrSize;
+      canvas.height = qrSize + 50; // Extra space for PIN text
+      
+      // Fill background
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // Draw QR code
+      ctx.drawImage(qrImage, 0, 0, qrSize, qrSize);
+      
+      // Add PIN text
+      ctx.fillStyle = '#000000';
+      ctx.font = 'bold 16px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText(`PIN: ${pin}`, canvas.width / 2, qrSize + 30);
+      
+      // Convert to data URL
+      const dataUrl = canvas.toDataURL('image/png');
+      
+      // Create download link
+      const downloadLink = document.createElement('a');
+      downloadLink.href = dataUrl;
+      downloadLink.download = `parkpass-qr-${bookingId.slice(-6)}.png`;
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+      
+    } catch (error) {
+      console.error('Error downloading QR code:', error);
+      alert('Failed to download QR code. Please try again.');
+    }
   };
 
   // Function to navigate to parking spot
@@ -386,8 +552,6 @@ export const BookingPage: React.FC = () => {
       </div>
     );
   }
-  console.log("Current spot:", spot);
-  console.log("Spot owner ID:", spot?.owner_id);
 
 
   if (step === 'success') {
@@ -443,13 +607,14 @@ export const BookingPage: React.FC = () => {
             <div className="bg-blue-50 rounded-lg p-4 mb-4 text-center">
               <h4 className="font-semibold text-blue-900 mb-3">Entry QR Code</h4>
               <QRCodeGenerator 
-                value={qrCode} 
+                bookingId={bookingId} 
+                spotId={id}
                 size={160}
                 className="mb-3"
                 id="booking-qr-code"
               />
               <p className="text-sm text-blue-700 mb-3">
-                Show this QR code to the parking attendant
+                Show this QR code at the parking spot for verification. This QR code is specific to your booking and parking spot.
               </p>
               <div className="flex gap-2">
                 <button
@@ -487,7 +652,7 @@ export const BookingPage: React.FC = () => {
                 {pin}
               </div>
               <p className="text-sm text-orange-700 text-center">
-                Use this PIN if QR code doesn't work
+                Use this PIN if QR code doesn't work - specific to this booking and spot
               </p>
             </div>
 
@@ -603,7 +768,6 @@ export const BookingPage: React.FC = () => {
                 <h2 className="text-xl font-bold text-gray-900 mb-6">
                   Select Parking Time
                 </h2>
-
                 <div className="space-y-6">
                   {/* Date Selection */}
                   <div>
@@ -620,31 +784,47 @@ export const BookingPage: React.FC = () => {
                     />
                   </div>
 
-                  {/* Time Selection */}
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        <Clock className="inline h-4 w-4 mr-1" />
-                        Start Time
-                      </label>
-                      <input
-                        type="time"
-                        value={startTime}
-                        onChange={(e) => setStartTime(e.target.value)}
-                        className="w-full px-3 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        End Time
-                      </label>
-                      <input
-                        type="time"
-                        value={endTime}
-                        onChange={(e) => setEndTime(e.target.value)}
-                        className="w-full px-3 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                      />
-                    </div>
+                  {/* Time Slot Selection */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Select Time Slots
+                    </label>
+                    {(!isOpen || slots.length === 0) ? (
+                      <div className="p-4 bg-red-50 rounded-lg text-center text-red-600 font-semibold">
+                        ปิดให้บริการ
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-3 gap-2">
+                        {slots.map((slot) => {
+                          const isBooked = isSlotBooked(slot);
+                          const isSelected = selectedSlots.includes(slot.start);
+
+                          // เช็คว่า slot นี้เป็นอดีตหรือไม่ และต้องเริ่มอย่างน้อย 15 นาทีหลังจากเวลาปัจจุบัน
+                          const slotDateTime = new Date(`${startDate}T${slot.start}`);
+                          const now = new Date();
+                          const fifteenMinutesFromNow = new Date(now.getTime() + 10 * 60 * 1000);
+                          const isPast = slotDateTime < fifteenMinutesFromNow;
+
+                          return (
+                            <button
+                              key={slot.start}
+                              type="button"
+                              disabled={isBooked || isPast}
+                              onClick={() => toggleSlot(slot.start)}
+                              className={`py-2 px-2 rounded-lg text-sm font-medium border
+                                ${(isBooked || isPast)
+                                  ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                                  : isSelected
+                                  ? "bg-blue-600 text-white border-blue-600"
+                                  : "bg-white text-gray-800 border-gray-300 hover:bg-blue-50"}
+                              `}
+                            >
+                              {slot.start} - {slot.end}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
 
                   {/* Vehicle Selection */}
@@ -693,7 +873,7 @@ export const BookingPage: React.FC = () => {
                   </div>
 
                   {/* Cost Summary */}
-                  {startTime && endTime && (
+                  {selectedSlots.length > 0 && startTime && endTime && (
                     <div className="bg-blue-50 rounded-lg p-4">
                       <div className="flex justify-between items-center">
                         <div>
@@ -968,7 +1148,10 @@ export const BookingPage: React.FC = () => {
                 <button
                   onClick={handleBooking}
                   disabled={
-                    (step === 'time' && (!startDate || !startTime || !endTime || !selectedVehicle)) ||
+                    (step === 'time' && (
+                      !startDate || !startTime || !endTime || !selectedVehicle ||
+                      isSlotBooked({ start: startTime, end: endTime }) || startTime >= endTime
+                    )) ||
                     (step === 'payment' && !paymentMethod) ||
                     vehicles.length === 0
                   }
