@@ -360,7 +360,7 @@ export const EditParkingSpot: React.FC = () => {
               </p>
             </div>
             <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
+              {/* <div className="flex items-center space-x-2">
                 <span className="text-sm font-medium text-gray-700">
                   {isEnabled ? 'Enabled' : 'Disabled'}
                 </span>
@@ -370,7 +370,7 @@ export const EditParkingSpot: React.FC = () => {
                 >
                   {isEnabled ? <ToggleRight className="h-6 w-6" /> : <ToggleLeft className="h-6 w-6" />}
                 </button>
-              </div>
+              </div> */}
               <button
                 onClick={handleDelete}
                 className="flex items-center space-x-2 text-red-600 hover:text-red-800 transition-colors"

@@ -187,7 +187,15 @@ class SupabaseService {
     const { data, error } = await query.order('created_at', { ascending: false });
 
     if (error) throw error;
-    return (data || []) as ParkingSpot[];
+    
+    // Transform database field names to match our interface
+    const transformedData = (data || []).map(spot => ({
+      ...spot,
+      totalSlots: spot.total_slots || 1,  // Transform total_slots to totalSlots
+      openingHours: spot.operating_hours  // Transform operating_hours to openingHours
+    }));
+    
+    return transformedData as ParkingSpot[];
   }
 
   async getParkingSpotById(id: string): Promise<ParkingSpot | null> {
@@ -202,7 +210,14 @@ class SupabaseService {
       return null;
     }
 
-    return data as ParkingSpot;
+    // Transform database field names to match our interface
+    const transformedData = {
+      ...data,
+      totalSlots: data.total_slots || 1,  // Transform total_slots to totalSlots
+      openingHours: data.operating_hours  // Transform operating_hours to openingHours
+    };
+
+    return transformedData as ParkingSpot;
   }
 
   async getMyParkingSpots(): Promise<ParkingSpot[]> {
@@ -216,7 +231,15 @@ class SupabaseService {
       .eq('is_approved', true);
       
     if (error) throw error;
-    return (data || []) as ParkingSpot[];
+    
+    // Transform database field names to match our interface
+    const transformedData = (data || []).map(spot => ({
+      ...spot,
+      totalSlots: spot.total_slots || 1,  // Transform total_slots to totalSlots
+      openingHours: spot.operating_hours  // Transform operating_hours to openingHours
+    }));
+    
+    return transformedData as ParkingSpot[];
   }
 
   async createParkingSpot(spotData: Omit<ParkingSpot, 'id' | 'owner_id' | 'created_at' | 'updated_at'>): Promise<ParkingSpot> {

@@ -17,6 +17,7 @@ import {
   Navigation
 } from 'lucide-react';
 import { QRCodeGenerator } from '../../components/QRCodeGenerator';
+import { TimeSlotAvailability } from '../../components/TimeSlotAvailability';
 import { supabase, saveBookingSession, getBookingSession, clearBookingSession } from '../../lib/supabase';
 import { ParkingSpot, Vehicle, PaymentMethod } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -45,14 +46,122 @@ export const BookingPage: React.FC = () => {
   };
   const [selectedSlots, setSelectedSlots] = useState<string[]>([]);
   
-  // ฟังก์ชัน toggle slot
+  // ฟังก์ชัน toggle slot with consecutive validation
   function toggleSlot(slotStart: string) {
-    setSelectedSlots((prev) =>
-      prev.includes(slotStart)
-        ? prev.filter((s) => s !== slotStart)
-        : [...prev, slotStart].sort()
-    );
+    setSelectedSlots((prev) => {
+      if (prev.includes(slotStart)) {
+        // Remove the slot
+        return prev.filter((s) => s !== slotStart);
+      } else {
+        // Add the slot and check if consecutive
+        const newSlots = [...prev, slotStart].sort();
+        
+        // Validate consecutive slots
+        if (areConsecutiveSlots(newSlots)) {
+          return newSlots;
+        } else {
+          // If not consecutive, show alert and don't add
+          alert('You can only select consecutive time slots. Please select adjacent time slots.');
+          return prev;
+        }
+      }
+    });
   }
+
+  // Helper function to check if slots are consecutive
+  function areConsecutiveSlots(slots: string[]): boolean {
+    if (slots.length <= 1) return true;
+    
+    const sortedSlots = [...slots].sort();
+    for (let i = 1; i < sortedSlots.length; i++) {
+      const currentSlot = sortedSlots[i];
+      const previousSlot = sortedSlots[i - 1];
+      
+      // Find the end time of the previous slot
+      const previousSlotData = generateTimeSlots(openTime, closeTime).find(s => s.start === previousSlot);
+      if (!previousSlotData || previousSlotData.end !== currentSlot) {
+        return false;
+      }
+    }
+    return true;
+  }
+  // Helper function to check if slot has at least 30 minutes remaining until END of slot
+  function hasMinimumTime(slotStart: string): boolean {
+    const now = new Date();
+    
+    // Parse date and time more reliably
+    const [year, month, day] = startDate.split('-').map(Number);
+    const [hour, minute] = slotStart.split(':').map(Number);
+    
+    // Create date in local timezone to avoid timezone issues
+    const slotStartDateTime = new Date(year, month - 1, day, hour, minute, 0);
+    // Calculate end time of the slot (1 hour later)
+    const slotEndDateTime = new Date(slotStartDateTime.getTime() + 60 * 60 * 1000);
+    
+    // Debug logging for midnight and early morning slots
+    if (slotStart === '00:00' || slotStart === '01:00') {
+      console.log(`BookingPage hasMinimumTime debug for ${slotStart}:`, {
+        startDate,
+        now: now.toISOString(),
+        slotStart: slotStartDateTime.toISOString(),
+        slotEnd: slotEndDateTime.toISOString(),
+        remainingMs: slotEndDateTime.getTime() - now.getTime(),
+        remainingMinutes: Math.floor((slotEndDateTime.getTime() - now.getTime()) / (1000 * 60)),
+        hasMinTime: Math.floor((slotEndDateTime.getTime() - now.getTime()) / (1000 * 60)) >= 30
+      });
+    }
+    
+    // Check if there are at least 30 minutes remaining until the slot ends
+    const remainingMs = slotEndDateTime.getTime() - now.getTime();
+    const remainingMinutes = Math.floor(remainingMs / (1000 * 60));
+    
+    return remainingMinutes >= 30;
+  }
+
+  // Helper function to calculate remaining time until END of slot (in minutes)
+  function getRemainingTimeInSlot(slotStart: string): number {
+    const now = new Date();
+    
+    // Parse date and time more reliably
+    const [year, month, day] = startDate.split('-').map(Number);
+    const [hour, minute] = slotStart.split(':').map(Number);
+    
+    // Create date in local timezone to avoid timezone issues
+    const slotStartDateTime = new Date(year, month - 1, day, hour, minute, 0);
+    // Calculate end time of the slot (1 hour later)
+    const slotEndDateTime = new Date(slotStartDateTime.getTime() + 60 * 60 * 1000);
+    
+    const remainingMs = slotEndDateTime.getTime() - now.getTime();
+    return Math.max(0, Math.floor(remainingMs / (1000 * 60))); // convert to minutes
+  }
+
+  // Helper function to calculate prorated price for a slot
+  function calculateSlotPrice(slotStart: string): number {
+    if (!spot) return 0;
+    
+    const remainingMinutes = getRemainingTimeInSlot(slotStart);
+    
+    if (remainingMinutes <= 0) return 0;
+    
+    // If more than 60 minutes remaining, full price
+    if (remainingMinutes >= 60) {
+      return spot.price; // Full price ฿20
+    }
+    
+    // If between 30-59 minutes remaining, prorated pricing
+    if (remainingMinutes >= 30) {
+      // Half price + proportional time before 30 min mark
+      const halfPrice = spot.price * 0.5; // ฿10
+      const extraMinutes = remainingMinutes - 30; // Minutes above 30
+      const extraPrice = (extraMinutes / 30) * (spot.price * 0.5); // Proportional to remaining half
+      const totalPrice = halfPrice + extraPrice;
+      return Math.ceil(totalPrice); // ปัดขึ้นไม่เอาทศนิยม
+    }
+    
+    // If less than 30 minutes, cannot book (should not reach here)
+    return 0;
+  }
+
   let hours: any = undefined;
   if (spot?.operating_hours) {
     if (typeof spot.operating_hours === "string") {
@@ -70,7 +179,7 @@ export const BookingPage: React.FC = () => {
   const selectedDay = days[(jsDay + 6) % 7];
 
   // หา key แบบ normalize ด้วย Object.entries
-  let dayHours = undefined;
+  let dayHours: any = undefined;
   if (hours) {
     const entries = Object.entries(hours);
     const found = entries.find(
@@ -144,18 +253,18 @@ export const BookingPage: React.FC = () => {
       if (!spot || !startDate) return;
       const { data, error } = await supabase
         .from('bookings')
-        .select('start_time, end_time')
+        .select('start_time, end_time, status')
         .eq('spot_id', spot.id)
-        .eq('status', 'confirmed')
+        .in('status', ['confirmed', 'active'])
         .gte('start_time', `${startDate}T00:00:00`)
         .lt('start_time', `${startDate}T23:59:59`);
       if (!error && data) {
-        setBookedSlots(
-          data.map((b: any) => ({
-            start: b.start_time.slice(11, 16),
-            end: b.end_time.slice(11, 16)
-          }))
-        );
+        const processedSlots = data.map((b: any) => ({
+          start: b.start_time.slice(11, 16),
+          end: b.end_time.slice(11, 16)
+        }));
+        console.log('Fetched bookedSlots:', processedSlots);
+        setBookedSlots(processedSlots);
       }
     };
     fetchBookedSlots();
@@ -164,9 +273,20 @@ export const BookingPage: React.FC = () => {
   function isSlotBooked(slot: { start: string, end: string }) {
   // ถ้าเวลาเริ่ม >= เวลาสิ้นสุด ไม่ต้องเช็ค
     if (slot.start >= slot.end) return true;
-    return bookedSlots.some(
+    const isBooked = bookedSlots.some(
       b => (slot.start < b.end && slot.end > b.start) // overlap
     );
+    
+    // Debug log for 00:00 slot
+    if (slot.start === '00:00') {
+      console.log('isSlotBooked debug for 00:00:', {
+        slot,
+        bookedSlots,
+        isBooked
+      });
+    }
+    
+    return isBooked;
   }
 
 
@@ -268,7 +388,26 @@ export const BookingPage: React.FC = () => {
           .single();
           
         if (error) throw error;
-        setSpot(data);
+        
+        // Transform database field names to match our interface
+        const transformedSpot = {
+          ...data,
+          totalSlots: data.total_slots || 1,  // Transform total_slots to totalSlots
+          openingHours: data.operating_hours  // Transform operating_hours to openingHours
+        };
+        
+        // Debug log for spot data transformation
+        console.log('Spot data transformation:', {
+          originalData: data,
+          transformedSpot,
+          totalSlotsField: data.total_slots,
+          transformedTotalSlots: transformedSpot.totalSlots,
+          operatingHours: data.operating_hours,
+          operatingHoursType: typeof data.operating_hours,
+          transformedOpeningHours: transformedSpot.openingHours
+        });
+        
+        setSpot(transformedSpot);
         
         // Fetch owner's payment methods
         if (data && data.owner_id) {
@@ -347,9 +486,20 @@ export const BookingPage: React.FC = () => {
   };
 
   const calculateTotal = () => {
-    if (!spot) return 0;
-    const duration = calculateDuration();
-    return Math.round(duration * spot.price * 100) / 100;
+    if (!spot || selectedSlots.length === 0) return 0;
+    
+    let total = 0;
+    console.log('=== Price Calculation Debug ===');
+    selectedSlots.forEach(slotStart => {
+      const slotPrice = calculateSlotPrice(slotStart);
+      const remaining = getRemainingTimeInSlot(slotStart);
+      console.log(`Slot ${slotStart}: ${remaining}min remaining = ฿${slotPrice}`);
+      total += slotPrice;
+    });
+    console.log(`Total: ฿${total}`);
+    console.log('===============================');
+    
+    return Math.ceil(total); // ปัดขึ้นไม่เอาทศนิยม
   };
 
   const handleBooking = async () => {
@@ -581,12 +731,20 @@ export const BookingPage: React.FC = () => {
                 <span className="font-medium">{startDate}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Time:</span>
-                <span className="font-medium">{startTime} - {endTime}</span>
+                <span className="text-gray-600">Start Time:</span>
+                <span className="font-medium">{startTime}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">End Time:</span>
+                <span className="font-medium">{endTime}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">Duration:</span>
+                <span className="font-medium">{calculateDuration().toFixed(1)} hours</span>
               </div>
               <div className="flex justify-between text-sm pt-2 border-t border-gray-200 mt-2">
                 <span className="text-gray-600">Total:</span>
-                <span className="font-bold text-lg">${calculateTotal()}</span>
+                <span className="font-bold text-lg">฿{calculateTotal()}</span>
               </div>
             </div>
 
@@ -726,14 +884,14 @@ export const BookingPage: React.FC = () => {
               </div>
               <div className="flex-1 h-px bg-gray-300 mx-2"></div>
               <div className={`flex items-center space-x-2 ${
-                step === 'payment' ? 'text-blue-600' : step === 'upload' || step === 'success' ? 'text-green-600' : 'text-gray-400'
+                step === 'payment' ? 'text-blue-600' : (step === 'upload' || step === 'success') ? 'text-green-600' : 'text-gray-400'
               }`}>
                 <div className={`w-6 h-6 rounded-full flex items-center justify-center text-sm font-semibold ${
                   step === 'payment' ? 'bg-blue-600 text-white' : 
-                  step === 'upload' || step === 'success' ? 'bg-green-600 text-white' : 
+                  (step === 'upload' || step === 'success') ? 'bg-green-600 text-white' : 
                   'bg-gray-300 text-gray-600'
                 }`}>
-                  {step === 'payment' ? '2' : step === 'upload' || step === 'success' ? <Check className="h-4 w-4" /> : '2'}
+                  {step === 'payment' ? '2' : (step === 'upload' || step === 'success') ? <Check className="h-4 w-4" /> : '2'}
                 </div>
                 <span className="text-sm font-medium">Payment</span>
               </div>
@@ -759,7 +917,7 @@ export const BookingPage: React.FC = () => {
               <h3 className="font-semibold text-gray-900 mb-1">{spot.name}</h3>
               <p className="text-sm text-gray-600">{spot.address}</p>
               <p className="text-sm text-blue-600 font-medium">
-                ${spot.price}/{spot.price_type || 'hour'}
+                ฿{spot.price}/{spot.price_type || 'hour'}
               </p>
             </div>
 
@@ -786,46 +944,254 @@ export const BookingPage: React.FC = () => {
 
                   {/* Time Slot Selection */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-3">
                       Select Time Slots
                     </label>
+                    
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                      <h4 className="font-medium text-blue-900 mb-2 text-sm">Booking Rules</h4>
+                      <ul className="text-xs text-blue-800 space-y-1">
+                        <li>• You can only select consecutive time slots</li>
+                        <li>• Booking is allowed only if more than 30 minutes remain until slot ends</li>
+                        <li>• Pricing: Full price if ≥60min remaining, prorated if 30-59min remaining</li>
+                        <li>• Prorated = Half price + proportional extra (minimum 50% of base price)</li>
+                        <li>• Base price: ฿{spot.price}/hour</li>
+                      </ul>
+                    </div>
+
+                    {/* Status Legend */}
+                    <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                        <div className="flex items-center space-x-2">
+                          <div className="w-3 h-3 bg-blue-100 border border-blue-300 rounded"></div>
+                          <span>Available</span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <div className="w-3 h-3 bg-yellow-100 border border-yellow-300 rounded"></div>
+                          <span>Limited</span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <div className="w-3 h-3 bg-red-100 border border-red-300 rounded"></div>
+                          <span>Full</span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <div className="w-3 h-3 bg-gray-200 border border-gray-300 rounded"></div>
+                          <span>Unavailable</span>
+                        </div>
+                      </div>
+                    </div>
+
                     {(!isOpen || slots.length === 0) ? (
                       <div className="p-4 bg-red-50 rounded-lg text-center text-red-600 font-semibold">
                         ปิดให้บริการ
                       </div>
                     ) : (
-                      <div className="grid grid-cols-3 gap-2">
-                        {slots.map((slot) => {
-                          const isBooked = isSlotBooked(slot);
-                          const isSelected = selectedSlots.includes(slot.start);
+                      <>
+                        {/* Mobile Horizontal Scroll Layout */}
+                        <div className="block sm:hidden">
+                          <div className="flex overflow-x-auto space-x-3 pb-4 scrollbar-hide">
+                            {slots.map((slot) => {
+                              const isBooked = isSlotBooked(slot);
+                              const isSelected = selectedSlots.includes(slot.start);
 
-                          // เช็คว่า slot นี้เป็นอดีตหรือไม่ และต้องเริ่มอย่างน้อย 15 นาทีหลังจากเวลาปัจจุบัน
-                          const slotDateTime = new Date(`${startDate}T${slot.start}`);
-                          const now = new Date();
-                          const fifteenMinutesFromNow = new Date(now.getTime() + 10 * 60 * 1000);
-                          const isPast = slotDateTime < fifteenMinutesFromNow;
+                              const [year, month, day] = startDate.split('-').map(Number);
+                              const [hour, minute] = slot.start.split(':').map(Number);
+                              const slotStartDateTime = new Date(year, month - 1, day, hour, minute, 0);
+                              const slotEndDateTime = new Date(slotStartDateTime.getTime() + 60 * 60 * 1000);
+                              const now = new Date();
+                              
+                              // For all slots, check if current time has passed the end of the slot
+                              // This allows booking as long as there's time left in the slot
+                              const isPast = slotEndDateTime <= now;
+                              
+                              // Debug log for midnight and early morning slots
+                              if (slot.start === '00:00' || slot.start === '01:00') {
+                                console.log(`BookingPage isPast debug for ${slot.start} (mobile):`, {
+                                  startDate,
+                                  slotStart: slot.start,
+                                  now: now.toISOString(),
+                                  slotStartTime: slotStartDateTime.toISOString(),
+                                  slotEndTime: slotEndDateTime.toISOString(),
+                                  isPast: slotEndDateTime <= now,
+                                  remainingMinutes: Math.floor((slotEndDateTime.getTime() - now.getTime()) / (1000 * 60))
+                                });
+                              }
+                              const hasMinTime = hasMinimumTime(slot.start);
+                              const isDisabled = isBooked || isPast || !hasMinTime;
 
-                          return (
-                            <button
-                              key={slot.start}
-                              type="button"
-                              disabled={isBooked || isPast}
-                              onClick={() => toggleSlot(slot.start)}
-                              className={`py-2 px-2 rounded-lg text-sm font-medium border
-                                ${(isBooked || isPast)
-                                  ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                                  : isSelected
-                                  ? "bg-blue-600 text-white border-blue-600"
-                                  : "bg-white text-gray-800 border-gray-300 hover:bg-blue-50"}
-                              `}
-                            >
-                              {slot.start} - {slot.end}
-                            </button>
-                          );
-                        })}
-                      </div>
+                              // Debug log for specific slot
+                              if (slot.start === '00:00' || slot.start === '01:00') {
+                                console.log(`Debug ${slot.start} slot:`, {
+                                  slotStart: slot.start,
+                                  currentTime: now.toTimeString(),
+                                  slotStartTime: slotStartDateTime.toTimeString(),
+                                  slotEndTime: slotEndDateTime.toTimeString(),
+                                  isPast,
+                                  hasMinTime,
+                                  isBooked,
+                                  isDisabled,
+                                  remainingTimeUntilEnd: getRemainingTimeInSlot(slot.start)
+                                });
+                              }
+
+                              return (
+                                <div key={slot.start} className="flex-none w-28 relative">
+                                  {/* Prorated pricing indicator */}
+                                  {!isDisabled && getRemainingTimeInSlot(slot.start) < 60 && getRemainingTimeInSlot(slot.start) >= 30 && (
+                                    <div className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs px-1 py-0.5 rounded-full text-[10px] font-bold z-10">
+                                      $
+                                    </div>
+                                  )}
+
+                                  <TimeSlotAvailability
+                                    spotId={spot?.id || ''}
+                                    totalSlots={spot?.totalSlots || 1}
+                                    date={startDate}
+                                    timeSlot={slot.start}
+                                    isBooked={isDisabled}
+                                    isSelected={isSelected}
+                                    onClick={() => !isDisabled ? toggleSlot(slot.start) : undefined}
+                                    className="h-16"
+                                  />
+                                </div>
+                              );
+                            })}
+                          </div>
+                          <div className="text-xs text-gray-500 text-center mt-2">
+                            ← Swipe to see more time slots →
+                          </div>
+                        </div>
+
+                        {/* Tablet and Desktop Grid Layout */}
+                        <div className="hidden sm:grid sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
+                          {slots.map((slot) => {
+                            const isBooked = isSlotBooked(slot);
+                            const isSelected = selectedSlots.includes(slot.start);
+
+                            const [year, month, day] = startDate.split('-').map(Number);
+                            const [hour, minute] = slot.start.split(':').map(Number);
+                            const slotStartDateTime = new Date(year, month - 1, day, hour, minute, 0);
+                            const slotEndDateTime = new Date(slotStartDateTime.getTime() + 60 * 60 * 1000);
+                            const now = new Date();
+                            
+                            // For all slots, check if current time has passed the end of the slot
+                            // This allows booking as long as there's time left in the slot
+                            const isPast = slotEndDateTime <= now;
+                            
+                            // Debug log for midnight and early morning slots
+                            if (slot.start === '00:00' || slot.start === '01:00') {
+                              console.log(`BookingPage isPast debug for ${slot.start} (desktop):`, {
+                                startDate,
+                                slotStart: slot.start,
+                                now: now.toISOString(),
+                                slotStartTime: slotStartDateTime.toISOString(),
+                                slotEndTime: slotEndDateTime.toISOString(),
+                                isPast: slotEndDateTime <= now,
+                                remainingMinutes: Math.floor((slotEndDateTime.getTime() - now.getTime()) / (1000 * 60))
+                              });
+                            }
+                            const hasMinTime = hasMinimumTime(slot.start);
+                            const isDisabled = isBooked || isPast || !hasMinTime;
+
+                            // Debug log for specific slot
+                            if (slot.start === '00:00' || slot.start === '01:00') {
+                              console.log(`Debug ${slot.start} slot (desktop):`, {
+                                slotStart: slot.start,
+                                currentTime: now.toTimeString(),
+                                slotStartTime: slotStartDateTime.toTimeString(),
+                                slotEndTime: slotEndDateTime.toTimeString(),
+                                isPast,
+                                hasMinTime,
+                                isBooked,
+                                isDisabled,
+                                remainingTimeUntilEnd: getRemainingTimeInSlot(slot.start)
+                              });
+                            }
+
+                            return (
+                              <div key={slot.start} className="relative">
+                                {/* Prorated pricing indicator */}
+                                {!isDisabled && getRemainingTimeInSlot(slot.start) < 60 && getRemainingTimeInSlot(slot.start) >= 30 && (
+                                  <div className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs px-1 py-0.5 rounded-full text-[10px] font-bold z-10">
+                                    $
+                                  </div>
+                                )}
+
+                                <TimeSlotAvailability
+                                  key={slot.start}
+                                  spotId={spot?.id || ''}
+                                  totalSlots={spot?.totalSlots || 1}
+                                  date={startDate}
+                                  timeSlot={slot.start}
+                                  isBooked={isDisabled}
+                                  isSelected={isSelected}
+                                  onClick={() => !isDisabled ? toggleSlot(slot.start) : undefined}
+                                />
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </>
                     )}
                   </div>
+
+                  {/* Selected Slots Summary */}
+                  {selectedSlots.length > 0 && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <Clock className="h-4 w-4 text-blue-600" />
+                        <span className="text-sm font-medium text-blue-900">Selected Time Slots</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {selectedSlots.map((slot) => (
+                          <span key={slot} className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-medium">
+                            {slot}
+                            <button
+                              onClick={() => toggleSlot(slot)}
+                              className="ml-1 text-blue-600 hover:text-blue-800"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                      {startTime && endTime && (
+                        <div className="mt-2 pt-2 border-t border-blue-200">
+                          <div className="space-y-1">
+                            <div className="flex justify-between text-xs">
+                              <span className="text-blue-700">Start Time:</span>
+                              <span className="font-medium text-blue-800">{startTime}</span>
+                            </div>
+                            <div className="flex justify-between text-xs">
+                              <span className="text-blue-700">End Time:</span>
+                              <span className="font-medium text-blue-800">{endTime}</span>
+                            </div>
+                            <div className="flex justify-between text-xs">
+                              <span className="text-blue-700">Duration:</span>
+                              <span className="font-medium text-blue-800">{calculateDuration().toFixed(1)} hours</span>
+                            </div>
+                            {selectedSlots.some(slot => getRemainingTimeInSlot(slot) < 60) && (
+                              <div className="text-xs text-orange-600 bg-orange-50 p-2 rounded mt-2">
+                                <div className="font-medium mb-1">⚠️ Prorated pricing applied:</div>
+                                {selectedSlots.map(slot => {
+                                  const remaining = getRemainingTimeInSlot(slot);
+                                  if (remaining < 60 && remaining >= 30) {
+                                    const price = calculateSlotPrice(slot);
+                                    return (
+                                      <div key={slot} className="text-xs">
+                                        {slot}: {remaining}min remaining = ฿{price.toFixed(2)} (Half price + extra)
+                                      </div>
+                                    );
+                                  }
+                                  return null;
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {/* Vehicle Selection */}
                   <div>
@@ -874,21 +1240,27 @@ export const BookingPage: React.FC = () => {
 
                   {/* Cost Summary */}
                   {selectedSlots.length > 0 && startTime && endTime && (
-                    <div className="bg-blue-50 rounded-lg p-4">
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <p className="text-sm text-blue-700">
-                            Duration: {calculateDuration().toFixed(1)} hours
-                          </p>
-                          <p className="text-sm text-blue-700">
-                            Rate: ${spot.price}/{spot.price_type || 'hour'}
-                          </p>
+                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
+                      <div className="flex items-center space-x-2 mb-3">
+                        <CreditCard className="h-4 w-4 text-blue-600" />
+                        <span className="text-sm font-medium text-blue-900">Booking Summary</span>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-blue-700">Duration:</span>
+                          <span className="font-medium text-blue-900">{calculateDuration().toFixed(1)} hours</span>
                         </div>
-                        <div className="text-right">
-                          <p className="text-2xl font-bold text-blue-900">
-                            ${calculateTotal()}
-                          </p>
-                          <p className="text-sm text-blue-700">Total Cost</p>
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-blue-700">Rate:</span>
+                          <span className="font-medium text-blue-900">฿{spot.price}/{spot.price_type || 'hour'}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-blue-700">Time slots:</span>
+                          <span className="font-medium text-blue-900">{selectedSlots.length} slots</span>
+                        </div>
+                        <div className="border-t border-blue-200 pt-2 flex justify-between items-center">
+                          <span className="text-base font-semibold text-blue-900">Total Cost:</span>
+                          <span className="text-2xl font-bold text-blue-900">฿{calculateTotal()}</span>
                         </div>
                       </div>
                     </div>
@@ -1032,13 +1404,28 @@ export const BookingPage: React.FC = () => {
                         <span>{startDate}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span>Time:</span>
-                        <span>{startTime} - {endTime}</span>
+                        <span>Start Time:</span>
+                        <span>{startTime}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>End Time:</span>
+                        <span>{endTime}</span>
                       </div>
                       <div className="flex justify-between">
                         <span>Duration:</span>
                         <span>{calculateDuration().toFixed(1)} hours</span>
                       </div>
+                      {selectedSlots.length > 0 && (
+                        <div className="flex justify-between">
+                          <span>Selected Slots:</span>
+                          <span>{selectedSlots.length} slot{selectedSlots.length > 1 ? 's' : ''}</span>
+                        </div>
+                      )}
+                      {selectedSlots.some(slot => getRemainingTimeInSlot(slot) < 60) && (
+                        <div className="text-xs text-orange-600 bg-orange-50 p-2 rounded">
+                          ⚠️ Prorated pricing applied due to partial time remaining in some slots
+                        </div>
+                      )}
                       <div className="flex justify-between font-semibold text-base pt-2 border-t">
                         <span>Total:</span>
                         <span>${calculateTotal()}</span>
@@ -1107,13 +1494,23 @@ export const BookingPage: React.FC = () => {
                         <span>{startDate}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span>Time:</span>
-                        <span>{startTime} - {endTime}</span>
+                        <span>Start Time:</span>
+                        <span>{startTime}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>End Time:</span>
+                        <span>{endTime}</span>
                       </div>
                       <div className="flex justify-between">
                         <span>Duration:</span>
                         <span>{calculateDuration().toFixed(1)} hours</span>
                       </div>
+                      {selectedSlots.length > 0 && (
+                        <div className="flex justify-between">
+                          <span>Selected Slots:</span>
+                          <span>{selectedSlots.length} slot{selectedSlots.length > 1 ? 's' : ''}</span>
+                        </div>
+                      )}
                       <div className="flex justify-between font-semibold text-base pt-2 border-t">
                         <span>Total:</span>
                         <span>${calculateTotal()}</span>

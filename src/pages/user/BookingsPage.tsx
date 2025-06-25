@@ -365,13 +365,13 @@ export const BookingsPage: React.FC = () => {
                   <Navigation className="h-4 w-4" />
                   <span>Navigate</span>
                 </button>
-                <button
+                {/* <button
                   onClick={() => setShowExtendModal(booking.id)}
                   className="flex items-center space-x-1 border border-green-200 text-green-600 px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-50 transition-colors"
                 >
                   <Clock className="h-4 w-4" />
                   <span>Extend Time</span>
-                </button>
+                </button> */}
                 <button
                   onClick={() => setShowQRModal(booking.id)}
                   className="flex items-center space-x-1 border border-blue-200 text-blue-600 px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-50 transition-colors"

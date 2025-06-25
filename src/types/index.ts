@@ -1,3 +1,14 @@
+export interface DayHours {
+  isOpen: boolean;
+  openTime?: string;
+  closeTime?: string;
+  is24Hours?: boolean;
+}
+
+export interface OpeningHours {
+  [key: string]: DayHours;
+}
+
 export interface ParkingSpot {
   id: string;
   name: string;
@@ -10,7 +21,7 @@ export interface ParkingSpot {
   reviewCount: number;
   images: string[];
   amenities: string[];
-  openingHours: string;
+  openingHours: string | OpeningHours;
   phone?: string;
   description: string;
   lat: number;

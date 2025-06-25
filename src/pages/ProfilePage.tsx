@@ -175,7 +175,7 @@ export const ProfilePage: React.FC = () => {
     if (!e.target.files || !e.target.files[0]) return;
     const file = e.target.files[0];
     const fileExt = file.name.split('.').pop();
-    const filePath = `${user?.id}.${fileExt}`;
+    const filePath = `${user?.id}/avatar.${fileExt}`;
     
     console.log('user?.id', user?.id);
     console.log('supabase.auth.getUser()', await supabase.auth.getUser());
@@ -195,13 +195,13 @@ export const ProfilePage: React.FC = () => {
 
     // อัปเดต avatar_url ใน profiles
     if (publicUrl) {
-      const { data, error } = await supabase
+      const { data, error: updateError } = await supabase
         .from('profiles')
-        .update({ avatar_url: 'test-url' })
+        .update({ avatar_url: publicUrl })
         .eq('id', user?.id)
         .select();  // ดึงแถวกลับมาด้วย
 
-      console.log('update result', data, error);
+      console.log('update result', data, updateError);
 
       if (updateError) {
         alert(updateError.message || 'Update profile failed');

@@ -106,12 +106,41 @@ export const ParkingSpotDetail: React.FC = () => {
         // 3. ดึงรีวิวของ spot นี้
         const { data: reviewData, error: reviewError } = await supabase
           .from('reviews')
-          .select('*, profiles(name)')
+          .select('*')
           .eq('spot_id', id)
           .order('created_at', { ascending: false });
 
-        if (reviewError) throw reviewError;
-        setReviews(reviewData || []);
+        if (reviewError) {
+          console.error('Review error:', reviewError);
+        } else {
+          console.log('Review data found:', reviewData);
+          
+          // ดึงข้อมูล profiles สำหรับรีวิวที่ไม่ anonymous
+          if (reviewData && reviewData.length > 0) {
+            const userIds = reviewData
+              .filter(review => !review.is_anonymous && review.user_id)
+              .map(review => review.user_id);
+            
+            if (userIds.length > 0) {
+              const { data: profilesData } = await supabase
+                .from('profiles')
+                .select('id, name, email, avatar_url')
+                .in('id', userIds);
+              
+              console.log('Profiles data:', profilesData);
+              
+              // เชื่อมข้อมูล profiles เข้ากับ reviews
+              const reviewsWithProfiles = reviewData.map(review => ({
+                ...review,
+                profiles: profilesData?.find(profile => profile.id === review.user_id) || null
+              }));
+              
+              setReviews(reviewsWithProfiles);
+            } else {
+              setReviews(reviewData);
+            }
+          }
+        }
       } catch (err: any) {
         setError(err.message);
       } finally {
@@ -239,14 +268,8 @@ export const ParkingSpotDetail: React.FC = () => {
   const operatingHours = parseOperatingHours();
   const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
-  const isClosedToday = (() => {
-    if (operatingHours.is24_7) return false;
-    const today = new Date().toLocaleString('en-US', { weekday: 'long' });
-    const dayData = operatingHours.days[today];
-    return !dayData?.isOpen;
-  })();
   // Get owner contact information
-  const ownerContact = spot.ownerProfile?.phone || "Contact Owner";
+  const ownerContact = (spot as any).ownerProfile?.phone || "Contact Owner";
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -360,7 +383,7 @@ export const ParkingSpotDetail: React.FC = () => {
                   <span className="font-medium">Availability</span>
                 </div>
                 <div className="font-semibold text-blue-900">
-                  {spot.available_slots} / {spot.total_slots} {spot.total_slots === 1 ? 'spot' : 'spots'}
+                  {spot.total_slots} {spot.total_slots === 1 ? 'spot' : 'spots'}
                 </div>
               </div>
               <div className="text-center">
@@ -474,14 +497,28 @@ export const ParkingSpotDetail: React.FC = () => {
                     <div key={review.id} className="p-5 bg-gray-50 rounded-lg border border-gray-100">
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center space-x-2">
-                          <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                            <span className="text-blue-600 font-semibold">
-                              {review.is_anonymous ? 'A' : review.profiles?.name?.[0] || 'U'}
-                            </span>
+                          <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center overflow-hidden">
+                            {review.profiles?.avatar_url ? (
+                              <img 
+                                src={review.profiles.avatar_url} 
+                                alt="Profile" 
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <span className="text-blue-600 font-semibold">
+                                {review.is_anonymous 
+                                  ? 'A' 
+                                  : (review.profiles?.name?.[0] || review.user_name?.[0] || 'U')
+                                }
+                              </span>
+                            )}
                           </div>
                           <div>
                             <span className="font-semibold text-gray-900">
-                              {review.is_anonymous ? 'Anonymous User' : review.profiles?.name || 'User'}
+                              {review.is_anonymous 
+                                ? 'Anonymous User' 
+                                : (review.profiles?.name || review.user_name || 'User')
+                              }
                             </span>
                             <div className="flex items-center space-x-1">
                               {[...Array(5)].map((_, i) => (
@@ -530,14 +567,9 @@ export const ParkingSpotDetail: React.FC = () => {
             <div className="flex flex-col md:flex-row gap-4">
               <button
                 onClick={handleBookNow}
-                disabled={spot.available_slots === 0 || !isOpenNow}
-                className="flex-1 bg-blue-600 text-white text-center py-4 px-6 rounded-lg font-semibold hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors text-lg"
+                className="flex-1 bg-blue-600 text-white text-center py-4 px-6 rounded-lg font-semibold hover:bg-blue-700 transition-colors text-lg"
               >
-                {spot.available_slots > 0 && isOpenNow
-                  ? 'Book Now'
-                  : !isOpenNow
-                    ? 'Closed'
-                    : 'No Spots Available'}
+                Book Now
               </button>
               <button 
                 onClick={handleNavigate}
@@ -546,9 +578,9 @@ export const ParkingSpotDetail: React.FC = () => {
                 <Navigation className="h-5 w-5" />
                 <span>Navigate</span>
               </button>
-              {spot.phone && (
+              {(spot as any).phone && (
                 <a 
-                  href={`tel:${spot.phone}`}
+                  href={`tel:${(spot as any).phone}`}
                   className="flex items-center justify-center space-x-2 px-6 py-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors font-semibold"
                 >
                   <Phone className="h-5 w-5" />
@@ -642,7 +674,7 @@ export const ParkingSpotDetail: React.FC = () => {
             
             <div className="text-center">
               <img 
-                src={spot.qr_code_url || spot.images[0]} 
+                src={(spot as any).qr_code_url || spot.images[0]} 
                 alt="Payment QR Code" 
                 className="max-w-full h-auto mx-auto rounded-lg"
               />

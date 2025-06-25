@@ -1595,7 +1595,7 @@ export const OwnerDashboard: React.FC = () => {
                       </p>
                       {payment.booking?.vehicles && (
                         <p className="text-sm text-gray-600">
-                          🚗 {payment.booking.vehicles.license_plate} ({payment.booking.vehicles.make} {payment.booking.vehicles.model})
+                          {payment.booking.vehicles.license_plate} ({payment.booking.vehicles.make} {payment.booking.vehicles.model})
                         </p>
                       )}
                       <div className="flex items-center space-x-2 text-sm">
@@ -1833,7 +1833,7 @@ export const OwnerDashboard: React.FC = () => {
                           <div className="pt-3 border-t border-gray-200">
                             <p className="text-sm text-gray-600">Vehicle Information</p>
                             <p className="font-medium text-gray-900">
-                              🚗 {selectedPayment.booking.vehicles.license_plate}
+                              {selectedPayment.booking.vehicles.license_plate}
                             </p>
                             <p className="text-sm text-gray-600">
                               {selectedPayment.booking.vehicles.make} {selectedPayment.booking.vehicles.model}
