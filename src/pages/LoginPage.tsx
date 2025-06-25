@@ -56,7 +56,7 @@ export const LoginPage: React.FC = () => {
     setError(null);
     setLoading(true);
 
-    let documentUrl = '';
+    let documentUrl: string | null = null;
     try {
       if (mode === 'owner-register') {
         if (!documentFile) throw new Error('กรุณาอัปโหลดหลักฐานเจ้าของที่');
@@ -65,7 +65,7 @@ export const LoginPage: React.FC = () => {
           .from('owner-documents')
           .upload(`documents/${Date.now()}_${documentFile.name}`, documentFile);
         if (uploadError) throw uploadError;
-        documentUrl = supabase.storage.from('owner-documents').getPublicUrl(data.path).publicUrl;
+        documentUrl = supabase.storage.from('owner-documents').getPublicUrl(data.path).data.publicUrl;
       }
 
       if (mode === 'login') {
