@@ -60,12 +60,13 @@ export const LoginPage: React.FC = () => {
     try {
       if (mode === 'owner-register') {
         if (!documentFile) throw new Error('กรุณาอัปโหลดหลักฐานเจ้าของที่');
-        const { data, error: uploadError } = await supabase
+        const fileName = `documents/${Date.now()}_${documentFile.name}`;
+        const { error: uploadError } = await supabase
           .storage
           .from('owner-documents')
-          .upload(`documents/${Date.now()}_${documentFile.name}`, documentFile);
+          .upload(fileName, documentFile);
         if (uploadError) throw uploadError;
-        documentUrl = supabase.storage.from('owner-documents').getPublicUrl(data.path).data.publicUrl;
+        documentUrl = supabase.storage.from('owner-documents').getPublicUrl(fileName).data.publicUrl;
       }
 
       if (mode === 'login') {
