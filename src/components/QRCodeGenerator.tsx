@@ -1,7 +1,9 @@
 import React, { useEffect, useRef } from 'react';
 
 interface QRCodeGeneratorProps {
-  value: string;
+  value?: string;
+  bookingId?: string;
+  spotId?: string;
   size?: number;
   className?: string;
   id?: string;
@@ -9,6 +11,8 @@ interface QRCodeGeneratorProps {
 
 export const QRCodeGenerator: React.FC<QRCodeGeneratorProps> = ({ 
   value, 
+  bookingId,
+  spotId,
   size = 200, 
   className = "",
   id
@@ -18,10 +22,28 @@ export const QRCodeGenerator: React.FC<QRCodeGeneratorProps> = ({
   useEffect(() => {
     // Generate QR code URL using a reliable service
     const generateQRCode = () => {
-      if (!value) return;
+      let qrData = '';
+      
+      // If bookingId and spotId are provided, create QR data for parking verification
+      if (bookingId && spotId) {
+        // Create a JSON object with booking and spot information
+        const parkingData = {
+          type: 'parking_verification',
+          bookingId: bookingId,
+          spotId: spotId,
+          timestamp: new Date().toISOString()
+        };
+        qrData = JSON.stringify(parkingData);
+      } else if (value) {
+        // Use the provided value for other purposes
+        qrData = value;
+      } else {
+        // No data to generate QR code
+        return;
+      }
       
       // Use QR Server API to generate QR code
-      const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(value)}`;
+      const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(qrData)}`;
       
       // Set the image source
       if (qrRef.current) {
@@ -30,7 +52,7 @@ export const QRCodeGenerator: React.FC<QRCodeGeneratorProps> = ({
     };
     
     generateQRCode();
-  }, [value, size]);
+  }, [value, bookingId, spotId, size]);
   
   return (
     <div className={`flex flex-col items-center ${className}`}>
@@ -45,6 +67,7 @@ export const QRCodeGenerator: React.FC<QRCodeGeneratorProps> = ({
           width={size}
           height={size}
           className="w-full h-full"
+          crossOrigin="anonymous"
         />
       </div>
     </div>
