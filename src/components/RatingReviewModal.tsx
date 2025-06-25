@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { Star, X, Send, Camera, Plus } from 'lucide-react';
+import { Star, X, Send, Camera } from 'lucide-react';
+import { uploadReviewPhoto } from '../utils/reviewPhotoUpload';
+import { supabase } from '../lib/supabase';
 
 interface RatingReviewModalProps {
   isOpen: boolean;
   onClose: () => void;
   spotName: string;
   bookingId: string;
-  onSubmit: (rating: number, review: string, photos: string[]) => void;
+  onSubmit: (rating: number, review: string, photos: string[], isAnonymous?: boolean, aspects?: any) => void;
 }
 
 export const RatingReviewModal: React.FC<RatingReviewModalProps> = ({
@@ -21,8 +23,15 @@ export const RatingReviewModal: React.FC<RatingReviewModalProps> = ({
   const [review, setReview] = useState('');
   const [photos, setPhotos] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
   const [isAnonymous, setIsAnonymous] = useState(false);
+  
+  // State for specific aspects rating
+  const [aspectRatings, setAspectRatings] = useState({
+    location: 0,
+    security: 0,
+    value: 0,
+    cleanliness: 0
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,13 +42,20 @@ export const RatingReviewModal: React.FC<RatingReviewModalProps> = ({
 
     setIsSubmitting(true);
     try {
-      await onSubmit(rating, review, photos, isAnonymous); // ส่ง isAnonymous ไปด้วย
+      console.log('Submitting review for booking:', bookingId);
+      await onSubmit(rating, review, photos, isAnonymous, aspectRatings);
       // Reset form
       setRating(0);
       setHoverRating(0);
       setReview('');
       setPhotos([]);
       setIsAnonymous(false);
+      setAspectRatings({
+        location: 0,
+        security: 0,
+        value: 0,
+        cleanliness: 0
+      });
       onClose();
     } catch (error) {
       console.error('Error submitting review:', error);
@@ -48,15 +64,45 @@ export const RatingReviewModal: React.FC<RatingReviewModalProps> = ({
     }
   };
 
-  const addPhoto = () => {
-    const url = prompt('Enter photo URL:');
-    if (url) {
-      setPhotos(prev => [...prev, url]);
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || photos.length >= 3) return;
+
+    // Get current user
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      alert('Please login to upload photos');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const uploadPromises = Array.from(files).slice(0, 3 - photos.length).map(async (file) => {
+        const photoUrl = await uploadReviewPhoto(file, user.id);
+        return photoUrl;
+      });
+
+      const uploadedUrls = await Promise.all(uploadPromises);
+      const validUrls = uploadedUrls.filter(url => url !== null) as string[];
+      
+      setPhotos(prev => [...prev, ...validUrls]);
+    } catch (error) {
+      console.error('Error uploading photos:', error);
+      alert('Failed to upload photos. Please try again.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const removePhoto = (index: number) => {
     setPhotos(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const setAspectRating = (aspect: string, rating: number) => {
+    setAspectRatings(prev => ({
+      ...prev,
+      [aspect]: rating
+    }));
   };
 
   const ratingLabels = [
@@ -167,16 +213,19 @@ export const RatingReviewModal: React.FC<RatingReviewModalProps> = ({
                   </div>
                 ))}
                 {photos.length < 3 && (
-                  <button
-                    type="button"
-                    onClick={addPhoto}
-                    className="h-20 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center hover:border-gray-400 transition-colors"
-                  >
+                  <label className="h-20 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center hover:border-gray-400 transition-colors cursor-pointer">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
                     <div className="text-center">
                       <Camera className="h-6 w-6 text-gray-400 mx-auto mb-1" />
                       <span className="text-xs text-gray-500">Add Photo</span>
                     </div>
-                  </button>
+                  </label>
                 )}
               </div>
               <p className="text-xs text-gray-500">
@@ -200,10 +249,20 @@ export const RatingReviewModal: React.FC<RatingReviewModalProps> = ({
                     <span className="text-sm text-gray-700">{aspect.label}</span>
                     <div className="flex items-center space-x-1">
                       {[1, 2, 3, 4, 5].map((star) => (
-                        <Star
+                        <button
                           key={star}
-                          className="h-4 w-4 text-gray-300 hover:text-yellow-400 cursor-pointer transition-colors"
-                        />
+                          type="button"
+                          onClick={() => setAspectRating(aspect.key, star)}
+                          className="p-0.5"
+                        >
+                          <Star
+                            className={`h-4 w-4 transition-colors cursor-pointer ${
+                              star <= (aspectRatings[aspect.key as keyof typeof aspectRatings] || 0)
+                                ? 'text-yellow-400 fill-current'
+                                : 'text-gray-300 hover:text-yellow-200'
+                            }`}
+                          />
+                        </button>
                       ))}
                     </div>
                   </div>

@@ -38,7 +38,15 @@ export const mockParkingSpots: ParkingSpot[] = [
       'https://images.pexels.com/photos/2199293/pexels-photo-2199293.jpeg?auto=compress&cs=tinysrgb&w=800'
     ],
     amenities: ['Shopping Access', 'Food Court Nearby', 'Valet Service', 'Car Wash'],
-    openingHours: '6:00 AM - 11:00 PM',
+    openingHours: {
+      Monday: { isOpen: true, openTime: '06:00', closeTime: '23:00' },
+      Tuesday: { isOpen: true, openTime: '06:00', closeTime: '23:00' },
+      Wednesday: { isOpen: true, openTime: '06:00', closeTime: '23:00' },
+      Thursday: { isOpen: true, openTime: '06:00', closeTime: '23:00' },
+      Friday: { isOpen: true, openTime: '06:00', closeTime: '23:00' },
+      Saturday: { isOpen: true, openTime: '06:00', closeTime: '23:00' },
+      Sunday: { isOpen: true, openTime: '06:00', closeTime: '23:00' }
+    },
     phone: '+1 (555) 987-6543',
     description: 'Convenient mall parking with direct access to shopping and dining.',
     lat: 40.7505,

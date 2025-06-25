@@ -167,11 +167,11 @@ export const Navbar: React.FC = () => {
                               !notification.read_at ? 'bg-blue-50' : ''
                             }`}
                           >
-                            <p className="text-sm font-medium text-gray-900">{notification.title}</p>
-                            <p className="text-sm text-gray-600">{notification.message}</p>
-                            <div className="flex items-center space-x-1 mt-1">
-                              <Clock className="h-3 w-3 text-gray-400" />
-                              <span className="text-xs text-gray-500">{formatNotificationTime(notification.created_at)}</span>
+                            <p className="text-sm font-medium text-gray-900 line-clamp-2">{notification.title}</p>
+                            <p className="text-sm text-gray-600 line-clamp-3 mt-1">{notification.message}</p>
+                            <div className="flex items-center space-x-1 mt-2">
+                              <Clock className="h-3 w-3 text-gray-400 flex-shrink-0" />
+                              <span className="text-xs text-gray-500 truncate">{formatNotificationTime(notification.created_at)}</span>
                             </div>
                           </div>
                         ))
@@ -207,19 +207,19 @@ export const Navbar: React.FC = () => {
                     alt="avatar"
                     className="w-8 h-8 rounded-full object-cover border border-blue-200"
                   />
-                  <span className="text-sm font-medium">{profile?.name || user?.email || 'Account'}</span>
+                  <span className="text-sm font-medium truncate max-w-[120px]">{profile?.name || user?.email || 'Account'}</span>
                 </button>
                 {showUserMenu && (
-                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                  <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
                     <div className="p-3 border-b border-gray-200 flex items-center space-x-3">
                       <img
                         src={profile?.avatar_url || '/default-avatar.png'}
                         alt="avatar"
-                        className="w-10 h-10 rounded-full object-cover border border-blue-200"
+                        className="w-10 h-10 rounded-full object-cover border border-blue-200 flex-shrink-0"
                       />
-                      <div>
-                        <p className="font-semibold text-gray-900">{profile?.name || 'Account'}</p>
-                        <p className="text-sm text-gray-600">{profile?.email || user?.email}</p>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold text-gray-900 truncate">{profile?.name || 'Account'}</p>
+                        <p className="text-sm text-gray-600 truncate">{profile?.email || user?.email}</p>
                       </div>
                     </div>
                     <div className="py-2">
@@ -315,11 +315,11 @@ export const Navbar: React.FC = () => {
                   <img
                     src={profile?.avatar_url || '/default-avatar.png'}
                     alt="avatar"
-                    className="w-10 h-10 rounded-full object-cover border border-blue-200"
+                    className="w-10 h-10 rounded-full object-cover border border-blue-200 flex-shrink-0"
                   />
-                  <div>
-                    <p className="font-semibold text-gray-900">{profile?.name || user?.email || 'Account'}</p>
-                    <p className="text-sm text-gray-600">{profile?.email || user?.email}</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-gray-900 truncate">{profile?.name || user?.email || 'Account'}</p>
+                    <p className="text-sm text-gray-600 truncate">{profile?.email || user?.email}</p>
                   </div>
                 </div>
               </div>
@@ -420,11 +420,11 @@ export const Navbar: React.FC = () => {
                       !notification.read_at ? 'bg-blue-50' : ''
                     }`}
                   >
-                    <p className="text-sm font-medium text-gray-900">{notification.title}</p>
-                    <p className="text-sm text-gray-600">{notification.message}</p>
-                    <div className="flex items-center space-x-1 mt-1">
-                      <Clock className="h-3 w-3 text-gray-400" />
-                      <span className="text-xs text-gray-500">{formatNotificationTime(notification.created_at)}</span>
+                    <p className="text-sm font-medium text-gray-900 line-clamp-2">{notification.title}</p>
+                    <p className="text-sm text-gray-600 line-clamp-3 mt-1">{notification.message}</p>
+                    <div className="flex items-center space-x-1 mt-2">
+                      <Clock className="h-3 w-3 text-gray-400 flex-shrink-0" />
+                      <span className="text-xs text-gray-500 truncate">{formatNotificationTime(notification.created_at)}</span>
                     </div>
                   </div>
                 ))
