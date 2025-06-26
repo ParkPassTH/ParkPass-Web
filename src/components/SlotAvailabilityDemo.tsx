@@ -2,9 +2,11 @@
 
 import React from 'react';
 import { useSlotAvailability } from '../hooks/useSlotAvailability';
+import { useLanguage } from '../contexts/LanguageContext';
 import { RealTimeSlotStatus } from './RealTimeSlotStatus';
 
 export const SlotAvailabilityDemo: React.FC = () => {
+  const { t } = useLanguage();
   // Example spot ID - replace with actual ID for testing
   const testSpotId = "example-spot-id";
   const testTotalSlots = 5;
@@ -75,6 +77,7 @@ const TimeSlotDemo: React.FC<TimeSlotDemoProps> = ({
   date, 
   timeSlot 
 }) => {
+  const { t } = useLanguage();
   const { availableSlots, bookedSlots, loading } = useSlotAvailability({
     spotId,
     totalSlots,
@@ -101,7 +104,7 @@ const TimeSlotDemo: React.FC<TimeSlotDemoProps> = ({
       <div className="flex justify-between items-center">
         <span className="font-medium">{timeSlot}</span>
         <div className={`text-sm ${getTextColor()}`}>
-          {loading ? 'Loading...' : (
+          {loading ? t('loading') : (
             <>
               <div>{availableSlots}/{totalSlots}</div>
               {bookedSlots > 0 && (

@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { MapPin, User, Calendar, Settings, Home, LogOut, Bell, Clock, Menu, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
+import { LanguageSwitcher } from './LanguageSwitcher';
 import { supabase } from '../lib/supabase';
 
 export const Navbar: React.FC = () => {
@@ -15,6 +17,7 @@ export const Navbar: React.FC = () => {
   const [loading, setLoading] = useState(false);
 
   const { user, profile, signOut } = useAuth();
+  const { t } = useLanguage();
 
   // Determine userType for navigation
   let userType: 'customer' | 'owner' | 'admin' = 'customer';
@@ -142,7 +145,7 @@ export const Navbar: React.FC = () => {
                 {showNotifications && (
                   <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
                     <div className="p-4 border-b border-gray-200 flex justify-between items-center">
-                      <h3 className="font-semibold text-gray-900">Notifications</h3>
+                      <h3 className="font-semibold text-gray-900">{t('notifications')}</h3>
                       {unreadCount > 0 && (
                         <button
                           onClick={markAllAsRead}
@@ -156,7 +159,7 @@ export const Navbar: React.FC = () => {
                       {loading ? (
                         <div className="p-4 text-center">
                           <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 mx-auto"></div>
-                          <p className="text-sm text-gray-500 mt-2">Loading notifications...</p>
+                          <p className="text-sm text-gray-500 mt-2">{t('loading')}</p>
                         </div>
                       ) : notifications.length > 0 ? (
                         notifications.map((notification) => (
@@ -177,7 +180,7 @@ export const Navbar: React.FC = () => {
                         ))
                       ) : (
                         <div className="p-4 text-center text-gray-500">
-                          <p>No notifications</p>
+                          <p>{t('no_notifications') || 'No notifications'}</p>
                         </div>
                       )}
                     </div>
@@ -186,12 +189,15 @@ export const Navbar: React.FC = () => {
                         onClick={() => setShowNotifications(false)}
                         className="text-sm text-blue-600 hover:text-blue-800 font-medium"
                       >
-                        Close
+                        {t('close')}
                       </button>
                     </div>
                   </div>
                 )}
               </div>
+
+              {/* Language Switcher */}
+              <LanguageSwitcher />
 
               {/* User Menu */}
               <div className="relative">
@@ -230,7 +236,7 @@ export const Navbar: React.FC = () => {
                           onClick={() => setShowUserMenu(false)}
                         >
                           <Calendar className="h-4 w-4" />
-                          <span>Dashboard</span>
+                          <span>{t('dashboard')}</span>
                         </Link>
                       )}
                       <Link
@@ -239,7 +245,7 @@ export const Navbar: React.FC = () => {
                         onClick={() => setShowUserMenu(false)}
                       >
                         <User className="h-4 w-4" />
-                        <span>Profile</span>
+                        <span>{t('profile')}</span>
                       </Link>
                       {userType === 'customer' && (
                         <Link
@@ -248,7 +254,7 @@ export const Navbar: React.FC = () => {
                           onClick={() => setShowUserMenu(false)}
                         >
                           <Calendar className="h-4 w-4" />
-                          <span>My Bookings</span>
+                          <span>{t('my_bookings')}</span>
                         </Link>
                       )}
                     </div>
@@ -258,7 +264,7 @@ export const Navbar: React.FC = () => {
                         className="flex items-center space-x-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors w-full text-left"
                       >
                         <LogOut className="h-4 w-4" />
-                        <span>Sign Out</span>
+                        <span>{t('sign_out')}</span>
                       </button>
                     </div>
                   </div>
@@ -349,7 +355,7 @@ export const Navbar: React.FC = () => {
                   onClick={() => setShowMobileMenu(false)}
                 >
                   <Calendar className="h-5 w-5" />
-                  <span>My Bookings</span>
+                  <span>{t('my_bookings')}</span>
                 </Link>
               )}
 
@@ -364,7 +370,7 @@ export const Navbar: React.FC = () => {
                   onClick={() => setShowMobileMenu(false)}
                 >
                   <Settings className="h-5 w-5" />
-                  <span>Dashboard</span>
+                  <span>{t('dashboard')}</span>
                 </Link>
               )}
 
@@ -374,8 +380,16 @@ export const Navbar: React.FC = () => {
                 onClick={() => setShowMobileMenu(false)}
               >
                 <User className="h-5 w-5" />
-                <span>Profile</span>
+                <span>{t('profile')}</span>
               </Link>
+
+              {/* Language Switcher */}
+              <div className="px-3 py-2">
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm font-medium text-gray-700">{t('language') || 'Language'}:</span>
+                  <LanguageSwitcher />
+                </div>
+              </div>
 
               {/* Logout */}
               <div className="border-t border-gray-200 pt-2 mt-2">
@@ -384,7 +398,7 @@ export const Navbar: React.FC = () => {
                   className="flex items-center space-x-2 px-3 py-2 rounded-md text-base font-medium text-red-600 hover:bg-red-50 transition-colors w-full text-left"
                 >
                   <LogOut className="h-5 w-5" />
-                  <span>Sign Out</span>
+                  <span>{t('sign_out')}</span>
                 </button>
               </div>
             </div>
@@ -395,13 +409,13 @@ export const Navbar: React.FC = () => {
         {showNotifications && (
           <div className="md:hidden fixed left-0 right-0 top-16 bg-white border-b border-gray-200 shadow-lg z-50">
             <div className="p-4 border-b border-gray-200 flex justify-between items-center">
-              <h3 className="font-semibold text-gray-900">Notifications</h3>
+              <h3 className="font-semibold text-gray-900">{t('notifications')}</h3>
               {unreadCount > 0 && (
                 <button
                   onClick={markAllAsRead}
                   className="text-xs text-blue-600 hover:text-blue-800 font-medium"
                 >
-                  Mark all as read
+                  {t('mark_all_read')}
                 </button>
               )}
             </div>
@@ -409,7 +423,7 @@ export const Navbar: React.FC = () => {
               {loading ? (
                 <div className="p-4 text-center">
                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 mx-auto"></div>
-                  <p className="text-sm text-gray-500 mt-2">Loading notifications...</p>
+                  <p className="text-sm text-gray-500 mt-2">{t('loading')}</p>
                 </div>
               ) : notifications.length > 0 ? (
                 notifications.map((notification) => (

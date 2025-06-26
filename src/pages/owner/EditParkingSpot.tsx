@@ -2,31 +2,27 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, 
-  MapPin, 
-  Clock, 
   DollarSign, 
   Camera, 
   Plus, 
   X,
   Save,
-  Trash2,
-  ToggleLeft,
-  ToggleRight,
-  Navigation
+  Trash2
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { OpeningHours } from '../../components/OpeningHours';
 import { MapPicker } from '../../components/MapPicker';
 import { ParkingSpot } from '../../lib/supabase';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 export const EditParkingSpot: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [isEnabled, setIsEnabled] = useState(true);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [gettingLocation, setGettingLocation] = useState(false);
   const [openingHours, setOpeningHours] = useState('');
   const [coordinates, setCoordinates] = useState({ lat: 13.7563, lng: 100.5018 });
   const [imageFiles, setImageFiles] = useState<File[]>([]);
@@ -45,12 +41,12 @@ export const EditParkingSpot: React.FC = () => {
   });
 
   const availableAmenities = [
-    { id: 'ev-charging', name: 'EV Charging' },
-    { id: 'cctv', name: 'CCTV Security' },
-    { id: 'covered', name: 'Covered Parking' },
-    { id: 'wifi', name: 'Free WiFi' },
-    { id: 'cafe', name: 'Cafe Nearby' },
-    { id: 'maintenance', name: 'Car Maintenance' },
+    { id: 'ev-charging', name: t('ev_charging') },
+    { id: 'cctv', name: t('security_camera') },
+    { id: 'covered', name: t('covered_parking') },
+    { id: 'wifi', name: t('wifi') },
+    { id: 'cafe', name: t('cafe_nearby') },
+    { id: 'maintenance', name: t('car_maintenance') },
   ];
 
   useEffect(() => {
@@ -96,7 +92,7 @@ export const EditParkingSpot: React.FC = () => {
         }
       } catch (err: any) {
         console.error('Error fetching spot details:', err);
-        setError(err.message || 'Failed to load parking spot details');
+        setError(err.message || t('failed_to_load_spot_details'));
       } finally {
         setLoading(false);
       }
@@ -142,7 +138,7 @@ export const EditParkingSpot: React.FC = () => {
     // Limit to 4 images total
     const remainingSlots = 4 - imageFiles.length - (formData.images?.length || 0);
     if (remainingSlots <= 0) {
-      alert('Maximum 4 images allowed');
+      alert(t('maximum_4_images_allowed'));
       return;
     }
     
@@ -151,11 +147,11 @@ export const EditParkingSpot: React.FC = () => {
     // Validate file types and sizes
     const validFiles = newFiles.filter(file => {
       if (!file.type.startsWith('image/')) {
-        alert(`File ${file.name} is not an image`);
+        alert(`${file.name} ${t('file_not_image')}`);
         return false;
       }
       if (file.size > 5 * 1024 * 1024) {
-        alert(`File ${file.name} exceeds 5MB limit`);
+        alert(`${file.name} ${t('file_exceeds_5mb_limit')}`);
         return false;
       }
       return true;
@@ -180,21 +176,6 @@ export const EditParkingSpot: React.FC = () => {
       
       setImageFiles(prev => prev.filter((_, i) => i !== index));
       setImagePreviewUrls(prev => prev.filter((_, i) => i !== index));
-    }
-  };
-
-  const addImageUrl = () => {
-    const url = prompt('Enter image URL:');
-    if (url) {
-      // Limit to 4 images total
-      if ((formData.images?.length || 0) + imageFiles.length >= 4) {
-        alert('Maximum 4 images allowed');
-        return;
-      }
-      setFormData(prev => ({
-        ...prev,
-        images: [...(prev.images || []), url]
-      }));
     }
   };
 
@@ -240,14 +221,14 @@ export const EditParkingSpot: React.FC = () => {
 
     // Validate required fields
     if (!formData.name || !formData.address || !formData.price || formData.price <= 0) {
-      setError('Please fill in all required fields');
+      setError(t('please_fill_required_fields'));
       setSaving(false);
       return;
     }
 
     // Validate images (at least 1 required)
     if ((formData.images?.length === 0 || !formData.images) && imageFiles.length === 0) {
-      setError('Please add at least one image of your parking spot');
+      setError(t('please_add_at_least_one_image'));
       setSaving(false);
       return;
     }
@@ -284,14 +265,14 @@ export const EditParkingSpot: React.FC = () => {
       navigate('/admin');
     } catch (error: any) {
       console.error("Error updating parking spot:", error);
-      setError(error.message || "Failed to update parking spot. Please try again.");
+      setError(error.message || t('failed_to_update_parking_spot'));
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this parking spot? This action cannot be undone.')) {
+    if (!confirm(t('confirm_delete_parking_spot'))) {
       return;
     }
     
@@ -309,7 +290,7 @@ export const EditParkingSpot: React.FC = () => {
       if (bookingsError) throw bookingsError;
       
       if (bookings && bookings.length > 0) {
-        alert('Cannot delete this parking spot because it has active bookings. Please cancel all bookings first or set the spot to inactive.');
+        alert(t('cannot_delete_active_bookings'));
         setLoading(false);
         return;
       }
@@ -325,7 +306,7 @@ export const EditParkingSpot: React.FC = () => {
       navigate('/admin');
     } catch (error: any) {
       console.error('Error deleting parking spot:', error);
-      setError(error.message || 'Failed to delete parking spot');
+      setError(error.message || t('failed_to_delete_parking_spot'));
       setLoading(false);
     }
   };
@@ -346,23 +327,23 @@ export const EditParkingSpot: React.FC = () => {
           className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors"
         >
           <ArrowLeft className="h-5 w-5" />
-          <span>Back to Dashboard</span>
+          <span>{t('back_to_dashboard')}</span>
         </button>
 
         <div className="bg-white rounded-xl shadow-lg p-8">
           <div className="flex items-center justify-between mb-8">
             <div>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                Edit Parking Spot
+                {t('edit_parking_spot')}
               </h1>
               <p className="text-gray-600">
-                Update your parking spot information and settings
+                {t('update_parking_spot_information')}
               </p>
             </div>
             <div className="flex items-center space-x-4">
               {/* <div className="flex items-center space-x-2">
                 <span className="text-sm font-medium text-gray-700">
-                  {isEnabled ? 'Enabled' : 'Disabled'}
+                  {isEnabled ? t('enabled') : t('disabled')}
                 </span>
                 <button
                   onClick={() => setIsEnabled(!isEnabled)}
@@ -376,7 +357,7 @@ export const EditParkingSpot: React.FC = () => {
                 className="flex items-center space-x-2 text-red-600 hover:text-red-800 transition-colors"
               >
                 <Trash2 className="h-5 w-5" />
-                <span>Delete</span>
+                <span>{t('delete')}</span>
               </button>
             </div>
           </div>
@@ -390,11 +371,11 @@ export const EditParkingSpot: React.FC = () => {
           <form onSubmit={handleSubmit} className="space-y-8">
             {/* Basic Information */}
             <div className="bg-gray-50 rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Basic Information</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('spot_information')}</h3>
               <div className="grid md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Parking Spot Name *
+                    {t('spot_name')} *
                   </label>
                   <input
                     type="text"
@@ -408,7 +389,7 @@ export const EditParkingSpot: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Address *
+                    {t('address')} *
                   </label>
                   <input
                     type="text"
@@ -423,7 +404,7 @@ export const EditParkingSpot: React.FC = () => {
               </div>
               <div className="mt-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Description
+                  {t('description')}
                 </label>
                 <textarea
                   name="description"
@@ -439,7 +420,7 @@ export const EditParkingSpot: React.FC = () => {
             {/* Location */}
             <div className="space-y-2">
               <div className="flex items-center justify-between mb-2">
-                <label className="block text-sm font-medium text-gray-700">Location on Map</label>
+                <label className="block text-sm font-medium text-gray-700">{t('location_settings')}</label>
               </div>
               <MapPicker
                 latitude={coordinates.lat}
@@ -452,12 +433,12 @@ export const EditParkingSpot: React.FC = () => {
             <div className="bg-gray-50 rounded-lg p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                 <DollarSign className="h-5 w-5 mr-2" />
-                Pricing & Capacity
+                {t('pricing')}
               </h3>
               <div className="grid md:grid-cols-3 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Price *
+                    {t('price')} *
                   </label>
                   <input
                     type="number"
@@ -473,7 +454,7 @@ export const EditParkingSpot: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Price Type *
+                    {t('price_type')} *
                   </label>
                   <select
                     name="price_type"
@@ -481,14 +462,14 @@ export const EditParkingSpot: React.FC = () => {
                     onChange={handleInputChange}
                     className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                   >
-                    <option value="hour">Per Hour</option>
-                    <option value="day">Per Day</option>
-                    <option value="month">Per Month</option>
+                    <option value="hour">{t('hourly_rate')}</option>
+                    <option value="day">{t('daily_rate')}</option>
+                    <option value="month">{t('monthly_rate')}</option>
                   </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Total Parking Slots *
+                    {t('total_slots')} *
                   </label>
                   <input
                     type="number"
@@ -508,7 +489,7 @@ export const EditParkingSpot: React.FC = () => {
 
             {/* Amenities */}
             <div className="bg-gray-50 rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Amenities</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('amenities')}</h3>
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {availableAmenities.map((amenity) => {
                   const isSelected = formData.amenities?.includes(amenity.name);
@@ -535,7 +516,7 @@ export const EditParkingSpot: React.FC = () => {
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-gray-900 flex items-center">
                   <Camera className="h-5 w-5 mr-2" />
-                  Photos (Required)
+                  {t('upload_images')} ({t('required')})
                 </h3>
                 <span className="text-sm text-gray-600">
                   {(formData.images?.length || 0) + imageFiles.length}/4 images
@@ -595,7 +576,7 @@ export const EditParkingSpot: React.FC = () => {
                       className="h-32 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center hover:border-gray-400 transition-colors cursor-pointer"
                     >
                       <Plus className="h-8 w-8 text-gray-400 mb-2" />
-                      <span className="text-sm text-gray-600">Upload Image</span>
+                      <span className="text-sm text-gray-600">{t('upload_from_device')}</span>
                     </label>
                   </div>
                 )}
@@ -608,7 +589,7 @@ export const EditParkingSpot: React.FC = () => {
               
               {(formData.images?.length === 0 || !formData.images) && imageFiles.length === 0 && (
                 <div className="mt-2 text-sm text-red-600">
-                  At least one image is required
+                  {t('please_add_at_least_one_image')}
                 </div>
               )}
             </div>
@@ -621,7 +602,7 @@ export const EditParkingSpot: React.FC = () => {
                 disabled={saving}
                 className="flex-1 border border-gray-200 py-3 px-6 rounded-lg font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50"
               >
-                Cancel
+                {t('cancel')}
               </button>
               <button
                 type="submit"
@@ -631,12 +612,12 @@ export const EditParkingSpot: React.FC = () => {
                 {saving ? (
                   <>
                     <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                    <span>Saving...</span>
+                    <span>{t('saving')}</span>
                   </>
                 ) : (
                   <>
                     <Save className="h-5 w-5" />
-                    <span>Save Changes</span>
+                    <span>{t('save_changes')}</span>
                   </>
                 )}
               </button>

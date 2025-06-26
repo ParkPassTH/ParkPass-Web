@@ -1,5 +1,6 @@
 import React from 'react';
 import { useSlotAvailability } from '../hooks/useSlotAvailability';
+import { useLanguage } from '../contexts/LanguageContext';
 import { Clock, MapPin, DollarSign, Car } from 'lucide-react';
 
 interface BookingSummaryProps {
@@ -17,6 +18,7 @@ export const BookingSummary: React.FC<BookingSummaryProps> = ({
   totalCost,
   vehicle
 }) => {
+  const { t } = useLanguage();
   if (!spot || selectedSlots.length === 0) return null;
 
   return (
@@ -82,6 +84,7 @@ const SlotAvailabilityInfo: React.FC<{
   date: string;
   timeSlot: string;
 }> = ({ spotId, totalSlots, date, timeSlot }) => {
+  const { t } = useLanguage();
   const { availableSlots, bookedSlots, loading } = useSlotAvailability({
     spotId,
     totalSlots,
@@ -89,7 +92,7 @@ const SlotAvailabilityInfo: React.FC<{
     timeSlot
   });
 
-  if (loading) return <span className="text-gray-400"> (checking...)</span>;
+  if (loading) return <span className="text-gray-400"> ({t('checking_status')})</span>;
 
   return (
     <span className="text-gray-500">

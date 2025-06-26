@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { MapPin, Star, Car, Clock, Zap, Shield, Umbrella } from 'lucide-react';
 import { ParkingSpot } from '../types';
 import { useSlotAvailability } from '../hooks/useSlotAvailability';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface ParkingSpotCardProps {
   spot: ParkingSpot;
@@ -40,6 +41,7 @@ function isSpotOpenNow(hours: any): boolean {
 }
 
 export const ParkingSpotCard: React.FC<ParkingSpotCardProps> = ({ spot }) => {
+  const { t } = useLanguage();
   const navigate = useNavigate();
   
   // Use real-time availability hook
@@ -88,15 +90,15 @@ export const ParkingSpotCard: React.FC<ParkingSpotCardProps> = ({ spot }) => {
     if (hours && hours[today]) {
       const dayHours = hours[today];
       if (!dayHours.isOpen) {
-        return "Closed today";
+        return t('closed_today');
       }
       if (dayHours.is24Hours) {
-        return "Open all day";
+        return t('open_all_day');
       }
-      return `Open ${dayHours.openTime} - ${dayHours.closeTime}`;
+      return `${t('open')} ${dayHours.openTime} - ${dayHours.closeTime}`;
     }
   
-    return "Check hours";
+    return t('check_hours');
   };
 
   // Helper to check if amenity exists
@@ -178,7 +180,7 @@ export const ParkingSpotCard: React.FC<ParkingSpotCardProps> = ({ spot }) => {
           onClick={handleBookNow}
           className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-blue-700 transition-colors"
         >
-          Book Now
+          {t('book_now')}
         </button>
       </div>                      
     </div>

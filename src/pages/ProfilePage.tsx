@@ -16,9 +16,12 @@ import {
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
+import { Navbar } from '../components/Navbar';
 import type { Profile, Vehicle } from '../lib/supabase';
 
 export const ProfilePage: React.FC = () => {
+  const { t } = useLanguage();
   const [activeSection, setActiveSection] = useState<'profile' | 'vehicles' | 'receipts' | 'settings'>('profile');
   const [userProfile, setUserProfile] = useState<Profile | null>(null);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
@@ -232,7 +235,7 @@ export const ProfilePage: React.FC = () => {
           </form>
 </div>
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-semibold text-gray-900">Personal Information</h3>
+          <h3 className="text-lg font-semibold text-gray-900">{t('personal_information')}</h3>
           {/* <button className="flex items-center space-x-2 text-blue-600 hover:text-blue-800 transition-colors">
             <Edit className="h-4 w-4" />
             <span>Edit</span>
@@ -241,7 +244,7 @@ export const ProfilePage: React.FC = () => {
         <div className="grid md:grid-cols-2 gap-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Full Name
+              {t('full_name')}
             </label>
             <input
               type="text"
@@ -252,7 +255,7 @@ export const ProfilePage: React.FC = () => {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Email Address
+              {t('email_address')}
             </label>
             <input
               type="email"
@@ -263,7 +266,7 @@ export const ProfilePage: React.FC = () => {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Phone Number
+              {t('phone_number')}
             </label>
             <input
               type="tel"
@@ -274,7 +277,7 @@ export const ProfilePage: React.FC = () => {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Member Since
+              {t('member_since')}
             </label>
             <input
               type="text"
@@ -298,7 +301,7 @@ export const ProfilePage: React.FC = () => {
             className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
           >
             <Plus className="h-4 w-4" />
-            <span>Add Vehicle</span>
+            <span>{t('add_vehicle')}</span>
           </button>
         </div>
         
@@ -432,7 +435,7 @@ export const ProfilePage: React.FC = () => {
                 className="mt-4 inline-flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm"
               >
                 <Plus className="h-4 w-4" />
-                <span>Add Vehicle</span>
+                <span>{t('add_vehicle')}</span>
               </button>
             </div>
           ) : (
@@ -545,10 +548,10 @@ export const ProfilePage: React.FC = () => {
   );
 
   const menuItems = [
-    { id: 'profile', label: 'Profile Info', icon: User },
-    { id: 'vehicles', label: 'My Vehicles', icon: Car },
-    { id: 'receipts', label: 'Payment History', icon: Receipt },
-    { id: 'settings', label: 'Settings', icon: Shield },
+    { id: 'profile', label: t('personal_info'), icon: User },
+    { id: 'vehicles', label: t('my_vehicles'), icon: Car },
+    { id: 'receipts', label: t('booking_history'), icon: Receipt },
+    { id: 'settings', label: t('settings'), icon: Shield },
   ];
 
   const renderContent = () => {
@@ -565,19 +568,23 @@ export const ProfilePage: React.FC = () => {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <span className="ml-4 text-gray-600">{t('loading')}</span>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Navigation */}
+      <Navbar />
+      
       <div className="max-w-6xl mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            My Profile
+            {t('my_profile')}
           </h1>
           <p className="text-gray-600">
-            Manage your account settings and preferences
+            {t('profile_desc') || 'Manage your account settings and preferences'}
           </p>
         </div>
         <div className="grid lg:grid-cols-4 gap-8">

@@ -8,22 +8,20 @@ import {
   Car, 
   Star,
   Navigation,
-  MoreHorizontal,
   AlertCircle,
   Copy,
   Download,
   Plus,
   Minus,
-  CheckCircle,
   XCircle,
   Image,
   X
 } from 'lucide-react';
 import { QRCodeGenerator } from '../../components/QRCodeGenerator';
 import { RatingReviewModal } from '../../components/RatingReviewModal';
-import { supabase } from '../../lib/supabase';
+import { supabase, getBookingSession } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { Booking } from '../../lib/supabase';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 export const BookingsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'current' | 'history'>('current');
@@ -35,12 +33,54 @@ export const BookingsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showFullQRImage, setShowFullQRImage] = useState(false);
+  const [incompleteSession, setIncompleteSession] = useState<any>(null);
+  const [showIncompleteAlert, setShowIncompleteAlert] = useState(false);
   
   const { user } = useAuth();
+  const { t } = useLanguage();
 
   useEffect(() => {
     fetchBookings();
   }, [user]);
+
+  useEffect(() => {
+    // Check for incomplete booking session
+    const checkIncompleteSession = () => {
+      const session = getBookingSession();
+      // Show alert for incomplete sessions (any step except success, or upload without payment slip)
+      if (session && (
+        session.step === 'time' || 
+        session.step === 'payment' || 
+        (session.step === 'upload' && !session.paymentSlipUrl)
+      )) {
+        setIncompleteSession(session);
+        setShowIncompleteAlert(true);
+      }
+    };
+
+    checkIncompleteSession();
+  }, []);
+
+  const getStepDisplayText = (step: string) => {
+    switch (step) {
+      case 'time': return t('incomplete_session_step_time_selection');
+      case 'payment': return t('incomplete_session_step_payment_method');
+      case 'upload': return t('incomplete_session_step_upload_slip');
+      case 'success': return t('incomplete_session_step_completed');
+      default: return t('incomplete_session_step_unknown');
+    }
+  };
+
+  const handleCompletePayment = () => {
+    if (incompleteSession && incompleteSession.spotId) {
+      // Navigate to booking page to complete payment
+      window.location.href = `/book/${incompleteSession.spotId}`;
+    }
+  };
+
+  const handleDismissIncompleteAlert = () => {
+    setShowIncompleteAlert(false);
+  };
 
   const fetchBookings = async () => {
     if (!user) return;
@@ -113,18 +153,18 @@ export const BookingsPage: React.FC = () => {
 
   const copyToClipboard = (text: string, type: string) => {
     navigator.clipboard.writeText(text);
-    alert(`${type} copied to clipboard!`);
+    alert(`${type} ${t('copied_to_clipboard')}`);
   };
 
   const handleExtendBooking = (bookingId: string) => {
     console.log(`Extending booking ${bookingId} by ${extendHours} hours`);
-    alert(`Booking extended by ${extendHours} hour(s) successfully!`);
+    alert(t('booking_extended_success'));
     setShowExtendModal(null);
     setExtendHours(1);
   };
 
   const handleCancelBooking = async (bookingId: string) => {
-    if (!confirm('Are you sure you want to cancel this booking?')) {
+    if (!confirm(t('confirm_cancel_booking'))) {
       return;
     }
     
@@ -144,10 +184,10 @@ export const BookingsPage: React.FC = () => {
       // Refresh bookings
       await fetchBookings();
       
-      alert('Booking cancelled successfully!');
+      alert(t('booking_cancelled_success'));
     } catch (err: any) {
       console.error('Error cancelling booking:', err);
-      alert(`Failed to cancel booking: ${err.message}`);
+      alert(`${t('failed_to_cancel_booking')}: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -165,12 +205,12 @@ export const BookingsPage: React.FC = () => {
     rating: number,
     review: string,
     photos: string[],
-    isAnonymous: boolean // เพิ่มตรงนี้
+    isAnonymous?: boolean // เปลี่ยนเป็น optional
   ) => {
     const booking = bookings.find(b => b.id === showReviewModal);
 
     if (!booking) {
-      alert('Booking not found');
+      alert(t('booking_not_found'));
       return;
     }
 
@@ -191,19 +231,19 @@ export const BookingsPage: React.FC = () => {
 
       if (error) throw error;
 
-      alert(`Thank you for your ${rating}-star review!`);
+      alert(`${t('thank_you_review')} ${rating} ${t('star_review')}!`);
       setShowReviewModal(null);
       await fetchBookings();
     } catch (err: any) {
       console.error('Error submitting review:', err);
-      alert(`Failed to submit review: ${err.message}`);
+      alert(`${t('failed_submit_review')}: ${err.message}`);
     }
   };
 
   // Function to navigate to the parking spot
   const navigateToParking = (booking: any) => {
     if (!booking.parking_spots || !booking.parking_spots.latitude || !booking.parking_spots.longitude) {
-      alert('Location information not available for this parking spot');
+      alert(t('location_not_available'));
       return;
     }
     
@@ -216,7 +256,7 @@ export const BookingsPage: React.FC = () => {
   // Function to download QR code
   const downloadQRCode = (booking: any) => {
     if (!booking || !booking.qr_code) {
-      alert('QR code not available');
+      alert(t('qr_code_not_available'));
       return;
     }
     
@@ -226,7 +266,7 @@ export const BookingsPage: React.FC = () => {
     const qrImage = document.getElementById(`qr-image-${booking.id}`) as HTMLImageElement;
     
     if (!qrImage || !ctx) {
-      alert('Unable to generate QR code image');
+      alert(t('unable_generate_qr'));
       return;
     }
     
@@ -275,23 +315,23 @@ export const BookingsPage: React.FC = () => {
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1">
             <h3 className="text-lg font-semibold text-gray-900 mb-1">
-              {spot?.name || 'Unknown Spot'}
+              {spot?.name || t('unknown_spot')}
             </h3>
             <div className="flex items-center space-x-1 text-gray-600 mb-2">
               <MapPin className="h-4 w-4" />
-              <span className="text-sm">{spot?.address || 'No address'}</span>
+              <span className="text-sm">{spot?.address || t('no_address')}</span>
             </div>
             <div className="flex flex-wrap gap-2">
               <div className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
                 getBookingStatusColor(booking.status)
               }`}>
-                {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
+                {t(booking.status)}
               </div>
               {shouldShowPaymentStatus && (
                 <div className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
                   getPaymentStatusColor(booking.payment_status)
                 }`}>
-                  Payment: {booking.payment_status.charAt(0).toUpperCase() + booking.payment_status.slice(1)}
+                  {t('payment_status')}: {t(booking.payment_status)}
                 </div>
               )}
             </div>
@@ -300,7 +340,7 @@ export const BookingsPage: React.FC = () => {
             <div className="text-lg font-bold text-gray-900">
               ${booking.total_cost}
             </div>
-            <div className="text-sm text-gray-500">Total</div>
+            <div className="text-sm text-gray-500">{t('total_cost')}</div>
           </div>
         </div>
 
@@ -320,7 +360,7 @@ export const BookingsPage: React.FC = () => {
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center space-x-2 text-blue-900 font-semibold">
                 <QrCode className="h-5 w-5" />
-                <span>Entry Access</span>
+                <span>{t('entry_access')}</span>
               </div>
               {/* <button
                 onClick={() => setShowQRModal(booking.id)}
@@ -331,13 +371,13 @@ export const BookingsPage: React.FC = () => {
             </div>
             <div className="grid grid-cols-1 gap-3">
               <div className="bg-white rounded-lg p-3 text-center">
-                <div className="text-xs text-gray-600 mb-1">PIN Code</div>
+                <div className="text-xs text-gray-600 mb-1">{t('pin_code')}</div>
                 <div className="font-mono text-lg font-bold text-blue-900">{booking.pin}</div>
                 <button
                   onClick={() => copyToClipboard(booking.pin, 'PIN')}
                   className="text-xs text-blue-600 hover:text-blue-800 mt-1"
                 >
-                  Copy PIN
+                  {t('copy_pin')}
                 </button>
               </div>
               {/* <div className="bg-white rounded-lg p-3 text-center">
@@ -363,7 +403,7 @@ export const BookingsPage: React.FC = () => {
                   className="flex items-center space-x-1 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
                 >
                   <Navigation className="h-4 w-4" />
-                  <span>Navigate</span>
+                  <span>{t('get_directions')}</span>
                 </button>
                 {/* <button
                   onClick={() => setShowExtendModal(booking.id)}
@@ -377,7 +417,7 @@ export const BookingsPage: React.FC = () => {
                   className="flex items-center space-x-1 border border-blue-200 text-blue-600 px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-50 transition-colors"
                 >
                   <QrCode className="h-4 w-4" />
-                  <span>Show QR</span>
+                  <span>{t('show_qr_code')}</span>
                 </button>
               </>
             )}
@@ -388,21 +428,21 @@ export const BookingsPage: React.FC = () => {
                   className="flex items-center space-x-1 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
                 >
                   <Navigation className="h-4 w-4" />
-                  <span>Navigate</span>
+                  <span>{t('get_directions')}</span>
                 </button>
                 <button
                   onClick={() => setShowQRModal(booking.id)}
                   className="flex items-center space-x-1 border border-blue-200 text-blue-600 px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-50 transition-colors"
                 >
                   <QrCode className="h-4 w-4" />
-                  <span>Show QR</span>
+                  <span>{t('show_qr_code')}</span>
                 </button>
                 <button
                   onClick={() => handleCancelBooking(booking.id)}
                   className="flex items-center space-x-1 border border-red-200 text-red-600 px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-50 transition-colors"
                 >
                   <XCircle className="h-4 w-4" />
-                  <span>Cancel</span>
+                  <span>{t('cancel')}</span>
                 </button>
               </>
             )}
@@ -413,14 +453,14 @@ export const BookingsPage: React.FC = () => {
                   className="flex items-center space-x-1 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
                 >
                   <QrCode className="h-4 w-4" />
-                  <span>Show QR</span>
+                  <span>{t('show_qr_code')}</span>
                 </button>
                 <button
                   onClick={() => handleCancelBooking(booking.id)}
                   className="flex items-center space-x-1 border border-red-200 text-red-600 px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-50 transition-colors"
                 >
                   <XCircle className="h-4 w-4" />
-                  <span>Cancel</span>
+                  <span>{t('cancel')}</span>
                 </button>
               </>
             )}
@@ -431,7 +471,7 @@ export const BookingsPage: React.FC = () => {
                   className="flex items-center space-x-1 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
                 >
                   <Car className="h-4 w-4" />
-                  <span>Book Again</span>
+                  <span>{t('book_again')}</span>
                 </Link>
                 {(!booking.reviews || booking.reviews.length === 0) && (
                   <button 
@@ -439,7 +479,7 @@ export const BookingsPage: React.FC = () => {
                     className="flex items-center space-x-1 border border-yellow-200 text-yellow-600 px-4 py-2 rounded-lg text-sm font-medium hover:bg-yellow-50 transition-colors"
                   >
                     <Star className="h-4 w-4" />
-                    <span>Rate & Review</span>
+                    <span>{t('rate_and_review')}</span>
                   </button>
                 )}
               </>
@@ -463,13 +503,13 @@ export const BookingsPage: React.FC = () => {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-6 text-center">
           <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Error Loading Bookings</h2>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">{t('error_loading_bookings')}</h2>
           <p className="text-gray-600 mb-4">{error}</p>
           <button
             onClick={fetchBookings}
             className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
           >
-            Try Again
+            {t('try_again')}
           </button>
         </div>
       </div>
@@ -481,12 +521,51 @@ export const BookingsPage: React.FC = () => {
       <div className="max-w-4xl mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            My Bookings
+            {t('my_bookings')}
           </h1>
           <p className="text-gray-600">
-            Manage your parking reservations and history
+            {t('manage_parking_reservations')}
           </p>
         </div>
+
+        {/* Incomplete Booking Alert */}
+        {showIncompleteAlert && incompleteSession && (
+          <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6">
+            <div className="flex items-start justify-between">
+              <div className="flex items-start space-x-3">
+                <AlertCircle className="h-5 w-5 text-orange-600 mt-0.5" />
+                <div>
+                  <h3 className="text-sm font-semibold text-orange-800">
+                    {t('incomplete_payment_alert')}
+                  </h3>
+                  <p className="text-sm text-orange-700 mt-1">
+                    {t('incomplete_session_description')}: {getStepDisplayText(incompleteSession.step)}
+                  </p>
+                  <div className="mt-3 flex space-x-2">
+                    <button
+                      onClick={handleCompletePayment}
+                      className="bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-orange-700 transition-colors"
+                    >
+                      {t('complete_payment')}
+                    </button>
+                    <button
+                      onClick={handleDismissIncompleteAlert}
+                      className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-300 transition-colors"
+                    >
+                      {t('dismiss')}
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={handleDismissIncompleteAlert}
+                className="text-orange-500 hover:text-orange-700"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Tabs */}
         <div className="bg-white rounded-xl shadow-md mb-6">
@@ -499,7 +578,7 @@ export const BookingsPage: React.FC = () => {
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >
-              Current & Upcoming ({currentBookings.length})
+              {t('current_and_upcoming')} ({currentBookings.length})
             </button>
             <button
               onClick={() => setActiveTab('history')}
@@ -509,7 +588,7 @@ export const BookingsPage: React.FC = () => {
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >
-              History ({pastBookings.length})
+              {t('booking_history')} ({pastBookings.length})
             </button>
           </div>
         </div>
@@ -529,17 +608,17 @@ export const BookingsPage: React.FC = () => {
               <div className="bg-white rounded-xl shadow-md p-8 text-center">
                 <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  No Current Bookings
+                  {t('no_current_bookings')}
                 </h3>
                 <p className="text-gray-600 mb-4">
-                  You don't have any active or upcoming reservations.
+                  {t('no_active_upcoming_reservations')}
                 </p>
                 <Link
                   to="/"
                   className="inline-flex items-center space-x-2 bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
                 >
                   <Car className="h-5 w-5" />
-                  <span>Find Parking</span>
+                  <span>{t('find_parking')}</span>
                 </Link>
               </div>
             )
@@ -556,10 +635,10 @@ export const BookingsPage: React.FC = () => {
               <div className="bg-white rounded-xl shadow-md p-8 text-center">
                 <Clock className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  No Booking History
+                  {t('no_booking_history')}
                 </h3>
                 <p className="text-gray-600">
-                  Your completed bookings will appear here.
+                  {t('completed_bookings_appear_here')}
                 </p>
               </div>
             )
@@ -572,7 +651,7 @@ export const BookingsPage: React.FC = () => {
             <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">
               <div className="p-6">
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-xl font-bold text-gray-900">Entry QR Code</h3>
+                  <h3 className="text-xl font-bold text-gray-900">{t('entry_qr_code')}</h3>
                   <button
                     onClick={() => setShowQRModal(null)}
                     className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -597,11 +676,11 @@ export const BookingsPage: React.FC = () => {
                   </div>
                   
                   <div className="bg-blue-50 rounded-lg p-4 mb-4">
-                    <div className="text-sm text-blue-700 mb-2">Backup PIN Code</div>
+                    <div className="text-sm text-blue-700 mb-2">{t('backup_pin_code')}</div>
                     <div className="text-3xl font-bold font-mono text-blue-900 mb-2">
                       {bookings.find(b => b.id === showQRModal)?.pin}
                     </div>
-                    <div className="text-xs text-blue-600">Use if QR scanner doesn't work</div>
+                    <div className="text-xs text-blue-600">{t('use_if_qr_not_work')}</div>
                   </div>
 
                   <div className="flex gap-2">
@@ -617,7 +696,7 @@ export const BookingsPage: React.FC = () => {
                       className="flex-1 flex items-center justify-center space-x-1 bg-blue-600 text-white py-2 px-3 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
                     >
                       <Download className="h-4 w-4" />
-                      <span>Save QR</span>
+                      <span>{t('save_qr')}</span>
                     </button>
                   </div>
                 </div>
@@ -723,9 +802,9 @@ export const BookingsPage: React.FC = () => {
                   <div className="bg-green-50 rounded-lg p-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <div className="text-sm text-green-700">Extension Cost</div>
+                        <div className="text-sm text-green-700">{t('extension_cost')}</div>
                         <div className="text-sm text-green-600">
-                          {extendHours} hour{extendHours !== 1 ? 's' : ''} × $25/hour
+                          {extendHours} {extendHours !== 1 ? t('hours') : t('hours')} × $25{t('per_hour_unit')}
                         </div>
                       </div>
                       <div className="text-xl font-bold text-green-900">
@@ -740,13 +819,13 @@ export const BookingsPage: React.FC = () => {
                     onClick={() => setShowExtendModal(null)}
                     className="flex-1 border border-gray-200 py-3 px-4 rounded-lg font-medium hover:bg-gray-50 transition-colors"
                   >
-                    Cancel
+                    {t('cancel')}
                   </button>
                   <button
                     onClick={() => handleExtendBooking(showExtendModal)}
                     className="flex-1 bg-green-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-green-700 transition-colors"
                   >
-                    Extend Parking
+                    {t('extend_parking')}
                   </button>
                 </div>
               </div>
