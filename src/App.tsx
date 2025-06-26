@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { useLanguage } from './contexts/LanguageContext';
 import { Navbar } from './components/Navbar';
 import { LandingPage } from './pages/LandingPage';
 
@@ -67,6 +68,7 @@ const ProtectedRoute: React.FC<{
   children: React.ReactNode; 
   requiredRole?: 'user' | 'owner' | 'admin';
 }> = ({ children, requiredRole }) => {
+  const { t } = useLanguage();
   const { user, profile, loading } = useAuth();
 
     useEffect(() => {
@@ -84,7 +86,7 @@ const ProtectedRoute: React.FC<{
     };
   }, [loading]);
 
-  if (loading) return <div>Loading...</div>;
+  if (loading) return <div>{t('loading')}</div>;
   if (!user) return <Navigate to="/login" replace />;
   if (!profile) return <div>Profile not found</div>;
 
@@ -92,7 +94,7 @@ const ProtectedRoute: React.FC<{
   if (
     requiredRole === 'owner' &&
     profile.role === 'owner' &&
-    profile.verify_status !== 'approved'
+    (profile as any).verify_status !== 'approved'
   ) {
     return (
       <div className="p-6 text-center text-red-600 font-bold">

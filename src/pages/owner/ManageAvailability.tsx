@@ -12,6 +12,7 @@ import {
   XCircle
 } from 'lucide-react';
 import { mockParkingSpots } from '../../data/mockData';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface TimeSlot {
   id: string;
@@ -26,6 +27,7 @@ interface TimeSlot {
 export const ManageAvailability: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [showAddBlock, setShowAddBlock] = useState(false);
   const [newBlock, setNewBlock] = useState({
@@ -62,7 +64,7 @@ export const ManageAvailability: React.FC = () => {
   ]);
 
   if (!spot) {
-    return <div>Parking spot not found</div>;
+    return <div>{t('parking_spot_not_found')}</div>;
   }
 
   const handleAddBlock = (e: React.FormEvent) => {
@@ -84,7 +86,7 @@ export const ManageAvailability: React.FC = () => {
   };
 
   const handleDeleteBlock = (blockId: string) => {
-    if (confirm('Are you sure you want to remove this time block?')) {
+    if (confirm(t('remove_time_block_confirm'))) {
       setTimeSlots(prev => prev.filter(slot => slot.id !== blockId));
     }
   };
@@ -117,25 +119,25 @@ export const ManageAvailability: React.FC = () => {
           className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors"
         >
           <ArrowLeft className="h-5 w-5" />
-          <span>Back to Dashboard</span>
+          <span>{t('back_to_dashboard')}</span>
         </button>
 
         <div className="bg-white rounded-xl shadow-lg p-8">
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              Manage Availability
+              {t('manage_availability')}
             </h1>
             <p className="text-gray-600 mb-4">
-              {spot.name} - Control when your parking spots are available
+              {spot.name} - {t('control_when_parking_spots_available')}
             </p>
             <div className="bg-blue-50 rounded-lg p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-semibold text-blue-900">Total Slots: {spot.totalSlots}</p>
-                  <p className="text-sm text-blue-700">Currently Available: {spot.availableSlots}</p>
+                  <p className="font-semibold text-blue-900">{t('total_slots')}: {spot.totalSlots}</p>
+                  <p className="text-sm text-blue-700">{t('currently_available')}: {spot.availableSlots}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm text-blue-700">Occupancy Rate</p>
+                  <p className="text-sm text-blue-700">{t('occupancy_rate')}</p>
                   <p className="text-2xl font-bold text-blue-900">
                     {Math.round(((spot.totalSlots - spot.availableSlots) / spot.totalSlots) * 100)}%
                   </p>
@@ -150,7 +152,7 @@ export const ManageAvailability: React.FC = () => {
               <div className="flex items-center space-x-4">
                 <Calendar className="h-5 w-5 text-gray-600" />
                 <label className="block text-sm font-medium text-gray-700">
-                  Select Date
+                  {t('select_date')}
                 </label>
                 <input
                   type="date"
@@ -165,7 +167,7 @@ export const ManageAvailability: React.FC = () => {
                 className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
               >
                 <Plus className="h-4 w-4" />
-                <span>Block Time</span>
+                <span>{t('block_time')}</span>
               </button>
             </div>
           </div>
@@ -173,7 +175,7 @@ export const ManageAvailability: React.FC = () => {
           {/* Time Blocks for Selected Date */}
           <div className="mb-8">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              Time Blocks for {new Date(selectedDate).toLocaleDateString()}
+              {t('time_blocks_for')} {new Date(selectedDate).toLocaleDateString()}
             </h3>
             
             {filteredSlots.length > 0 ? (
@@ -184,14 +186,14 @@ export const ManageAvailability: React.FC = () => {
                       <div className="flex items-center space-x-4">
                         <div className={`flex items-center space-x-2 px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(slot.status)}`}>
                           {getStatusIcon(slot.status)}
-                          <span className="capitalize">{slot.status}</span>
+                          <span className="capitalize">{t(slot.status)}</span>
                         </div>
                         <div className="flex items-center space-x-2 text-gray-600">
                           <Clock className="h-4 w-4" />
                           <span>{slot.startTime} - {slot.endTime}</span>
                         </div>
                         <div className="text-sm text-gray-600">
-                          {slot.slotsAffected} slots affected
+                          {slot.slotsAffected} {t('slots_affected_lowercase')}
                         </div>
                       </div>
                       <div className="flex items-center space-x-2">
@@ -208,7 +210,7 @@ export const ManageAvailability: React.FC = () => {
                     </div>
                     {slot.reason && (
                       <div className="mt-2 text-sm text-gray-600">
-                        <strong>Reason:</strong> {slot.reason}
+                        <strong>{t('reason')}:</strong> {slot.reason}
                       </div>
                     )}
                   </div>
@@ -217,8 +219,8 @@ export const ManageAvailability: React.FC = () => {
             ) : (
               <div className="text-center py-8 text-gray-500">
                 <Calendar className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                <p>No time blocks set for this date</p>
-                <p className="text-sm">All slots are available during operating hours</p>
+                <p>{t('no_time_blocks_set')}</p>
+                <p className="text-sm">{t('all_slots_available_operating_hours')}</p>
               </div>
             )}
           </div>
@@ -226,7 +228,7 @@ export const ManageAvailability: React.FC = () => {
           {/* All Time Blocks */}
           <div>
             <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              All Upcoming Time Blocks
+              {t('all_upcoming_time_blocks')}
             </h3>
             
             {timeSlots.length > 0 ? (
@@ -234,12 +236,12 @@ export const ManageAvailability: React.FC = () => {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-gray-200">
-                      <th className="text-left py-3 px-4 font-semibold text-gray-900">Date</th>
-                      <th className="text-left py-3 px-4 font-semibold text-gray-900">Time</th>
-                      <th className="text-left py-3 px-4 font-semibold text-gray-900">Status</th>
-                      <th className="text-left py-3 px-4 font-semibold text-gray-900">Slots</th>
-                      <th className="text-left py-3 px-4 font-semibold text-gray-900">Reason</th>
-                      <th className="text-left py-3 px-4 font-semibold text-gray-900">Actions</th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-900">{t('date')}</th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-900">{t('time')}</th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-900">{t('status')}</th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-900">{t('slots')}</th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-900">{t('reason')}</th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-900">{t('actions')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -250,7 +252,7 @@ export const ManageAvailability: React.FC = () => {
                         <td className="py-3 px-4">
                           <div className={`inline-flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(slot.status)}`}>
                             {getStatusIcon(slot.status)}
-                            <span className="capitalize">{slot.status}</span>
+                            <span className="capitalize">{t(slot.status)}</span>
                           </div>
                         </td>
                         <td className="py-3 px-4">{slot.slotsAffected}</td>
@@ -276,7 +278,7 @@ export const ManageAvailability: React.FC = () => {
             ) : (
               <div className="text-center py-8 text-gray-500">
                 <Clock className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                <p>No time blocks configured</p>
+                <p>{t('no_time_blocks_configured')}</p>
               </div>
             )}
           </div>
@@ -288,7 +290,7 @@ export const ManageAvailability: React.FC = () => {
             <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">
               <div className="p-6">
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-xl font-bold text-gray-900">Block Time Slot</h3>
+                  <h3 className="text-xl font-bold text-gray-900">{t('block_time_slot')}</h3>
                   <button
                     onClick={() => setShowAddBlock(false)}
                     className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -300,7 +302,7 @@ export const ManageAvailability: React.FC = () => {
                 <form onSubmit={handleAddBlock} className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Date
+                      {t('date')}
                     </label>
                     <input
                       type="date"
@@ -315,7 +317,7 @@ export const ManageAvailability: React.FC = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Start Time
+                        {t('start_time')}
                       </label>
                       <input
                         type="time"
@@ -327,7 +329,7 @@ export const ManageAvailability: React.FC = () => {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        End Time
+                        {t('end_time')}
                       </label>
                       <input
                         type="time"
@@ -341,21 +343,21 @@ export const ManageAvailability: React.FC = () => {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Status
+                      {t('status')}
                     </label>
                     <select
                       value={newBlock.status}
                       onChange={(e) => setNewBlock(prev => ({ ...prev, status: e.target.value as 'blocked' | 'maintenance' }))}
                       className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                     >
-                      <option value="blocked">Blocked</option>
-                      <option value="maintenance">Maintenance</option>
+                      <option value="blocked">{t('blocked')}</option>
+                      <option value="maintenance">{t('maintenance')}</option>
                     </select>
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Slots Affected
+                      {t('slots_affected')}
                     </label>
                     <input
                       type="number"
@@ -370,13 +372,13 @@ export const ManageAvailability: React.FC = () => {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Reason (Optional)
+                      {t('reason_optional')}
                     </label>
                     <textarea
                       value={newBlock.reason}
                       onChange={(e) => setNewBlock(prev => ({ ...prev, reason: e.target.value }))}
                       rows={3}
-                      placeholder="e.g., Private event, Cleaning, Repairs..."
+                      placeholder={t('example_reason_placeholder')}
                       className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                     />
                   </div>
@@ -387,13 +389,13 @@ export const ManageAvailability: React.FC = () => {
                       onClick={() => setShowAddBlock(false)}
                       className="flex-1 border border-gray-200 py-2 px-4 rounded-lg font-medium hover:bg-gray-50 transition-colors"
                     >
-                      Cancel
+                      {t('cancel')}
                     </button>
                     <button
                       type="submit"
                       className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-blue-700 transition-colors"
                     >
-                      Add Block
+                      {t('add_block')}
                     </button>
                   </div>
                 </form>

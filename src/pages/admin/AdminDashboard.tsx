@@ -2,8 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Eye, Check, X, Users, UserCheck, ParkingCircle, CalendarCheck2, Coins } from 'lucide-react';
 import { OwnersVerify } from './OwnersVerify';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 const AdminDashboard: React.FC = () => {
+  const { t } = useLanguage();
   const [stats, setStats] = useState<any>({});
   const [pendingOwners, setPendingOwners] = useState<any[]>([]);
   const [selectedOwner, setSelectedOwner] = useState<any>(null);
@@ -73,12 +75,12 @@ const AdminDashboard: React.FC = () => {
   return (
     <div className="p-6 bg-gradient-to-br from-blue-50 to-white min-h-screen">
       <h1 className="text-3xl font-extrabold mb-8 text-blue-800 flex items-center gap-2">
-        <ParkingCircle className="text-blue-500" size={32} /> Admin Dashboard
+        <ParkingCircle className="text-blue-500" size={32} /> {t('admin_dashboard')}
       </h1>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-        <Stat icon={<Users className="text-blue-500" />} label="Total Users" value={stats.totalUsers} />
+        <Stat icon={<Users className="text-blue-500" />} label={t('total_users')} value={stats.totalUsers} />
         <Stat icon={<UserCheck className="text-green-500" />} label="Active Users (30d)" value={stats.activeUsers} />
-        <Stat icon={<ParkingCircle className="text-yellow-500" />} label="Total Owners" value={stats.totalOwners} />
+        <Stat icon={<ParkingCircle className="text-yellow-500" />} label={t('total_owners')} value={stats.totalOwners} />
         <Stat icon={<ParkingCircle className="text-indigo-500" />} label="Total Spots" value={stats.totalSpots} />
         <Stat icon={<CalendarCheck2 className="text-pink-500" />} label="Total Bookings" value={stats.totalBookings} />
         <Stat icon={<CalendarCheck2 className="text-purple-500" />} label="Bookings (30d)" value={stats.bookings30d} />
@@ -95,7 +97,7 @@ const AdminDashboard: React.FC = () => {
             <button
               onClick={() => setSelectedOwner(null)}
               className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-200"
-              title="Close"
+              title={t('close')}
             >
               <X />
             </button>

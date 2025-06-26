@@ -13,6 +13,10 @@ import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { ParkingSpotCard } from '../../components/ParkingSpotCard';
 import { useMemo } from 'react';
+import { useLanguage } from '../../contexts/LanguageContext';
+import { LanguageSwitcher } from '../../components/LanguageSwitcher';
+import { Navbar } from '../../components/Navbar';
+import { convertSupabaseToUI } from '../../utils/adaptors';
 
 // Fix for default markers in React Leaflet
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -32,6 +36,7 @@ const ChangeMapView = ({ center }: { center: LatLngExpression }) => {
 };
 
 export const HomePage = () => {
+  const { t } = useLanguage();
   const { spots, loading, error } = useParkingSpots();
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredSpots, setFilteredSpots] = useState<ParkingSpot[]>([]);
@@ -40,12 +45,11 @@ export const HomePage = () => {
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const navigate = useNavigate();
 
-// Filter spots ที่ผ่านการอนุมัติเท่านั้น
-  const approvedSpots = spots.filter(spot => spot.is_approved === true);
-
+// Filter spots ที่ผ่านการอนุมัติเท่านั้น (ใช้ is_active แทน is_approved)
+  const activeSpots = spots.filter(spot => spot.is_active === true);
 
   useEffect(() => {
-    setFilteredSpots(approvedSpots);
+    setFilteredSpots(activeSpots);
   }, [spots]);
 
   const handleSearch = (query: string) => {
@@ -65,7 +69,7 @@ export const HomePage = () => {
           const { latitude, longitude } = position.coords;
           setMapCenter([latitude, longitude]);
           // Sort spots by distance from user location
-          const sortedSpots = [...approvedSpots].sort((a, b) => {
+          const sortedSpots = [...spots].sort((a, b) => {
             const distA = calculateDistance(latitude, longitude, a.latitude || 0, a.longitude || 0);
             const distB = calculateDistance(latitude, longitude, b.latitude || 0, b.longitude || 0);
             return distA - distB;
@@ -75,13 +79,13 @@ export const HomePage = () => {
         },
         (error) => {
           console.error('Error getting location:', error);
-          alert('Unable to get your location. Please enable location services and try again.');
+          alert(t('location_error_message') || 'Unable to get your location. Please enable location services and try again.');
           setIsGettingLocation(false);
         },
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
     } else {
-      alert('Geolocation is not supported by this browser');
+      alert(t('geolocation_not_supported') || 'Geolocation is not supported by this browser');
       setIsGettingLocation(false);
     }
   };
@@ -106,7 +110,7 @@ export const HomePage = () => {
   }, [spots]);
 
   const filterSpots = (query: string, spotsToFilter: ParkingSpot[], filters?: any) => {
-    let filtered = spotsToFilter.filter(spot => spot.is_approved === true);
+    let filtered = spotsToFilter.filter(spot => spot.is_active === true);
 
     // Search by name or address
     if (query) {
@@ -117,10 +121,10 @@ export const HomePage = () => {
     }
 
     if (filters) {
-      // Parking Type filter
+      // Parking Type filter (ใช้ price_type แทน type)
       if (filters.parkingType && filters.parkingType !== 'All Types') {
         filtered = filtered.filter(spot =>
-          spot.type === filters.parkingType
+          spot.price_type === filters.parkingType
         );
       }
 
@@ -163,7 +167,7 @@ export const HomePage = () => {
     setFilteredSpots(filtered);
   };
 
-  const displaySpots = filteredSpots.length > 0 ? filteredSpots : approvedSpots;
+  const displaySpots = filteredSpots.length > 0 ? filteredSpots : activeSpots;
 
   const handleSpotClick = (spotId: string) => {
     navigate(`/spot/${spotId}`);
@@ -175,7 +179,7 @@ export const HomePage = () => {
         <div className="max-w-7xl mx-auto">
           <div className="text-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Loading parking spots...</p>
+            <p className="mt-4 text-gray-600">{t('loading_parking_spots')}</p>
           </div>
         </div>
       </div>
@@ -187,24 +191,25 @@ export const HomePage = () => {
       <div className="min-h-screen bg-gray-50 p-6">
         <div className="max-w-7xl mx-auto">
           <div className="text-center py-12">
-            <p className="text-red-600">Error loading parking spots: {error}</p>
+            <p className="text-red-600">{t('error_loading_parking_spots')}: {error}</p>
           </div>
         </div>
       </div>
     );
-  }
-
-  return (
+  }    return (
     <div className="min-h-screen bg-gray-50">
+      {/* Navigation */}
+      <Navbar />
+      
       {/* Hero Section */}
       <div className="bg-gradient-to-br from-blue-600 to-blue-800 text-white py-16">
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center">
             <h1 className="text-4xl md:text-6xl font-bold mb-6">
-              Find Your Perfect Parking Spot
+              {t('find_perfect_parking_spot')}
             </h1>
             <p className="text-xl md:text-2xl mb-8 text-blue-100">
-              Book private parking spaces from local hosts in your area
+              {t('book_private_parking')}
             </p>
           </div>
         </div>
@@ -224,13 +229,13 @@ export const HomePage = () => {
       <div className="max-w-7xl mx-auto px-6 py-8">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-2xl font-bold text-gray-900">
-            Parking Spots Near You
+            {t('parking_spots_near_you')}
           </h2>
           <Button
             variant="outline"
             onClick={() => setShowMap(!showMap)}
           >
-            {showMap ? 'Hide Map' : 'Show Map'}
+            {showMap ? t('hide_map') : t('show_map')}
           </Button>
         </div>
         
@@ -248,7 +253,7 @@ export const HomePage = () => {
               />
               
               {/* Add markers for each parking spot */}
-              {displaySpots.map((spot) => (
+              {displaySpots.map((spot: ParkingSpot) => (
                 <Marker 
                   key={spot.id} 
                   position={[spot.latitude || 0, spot.longitude || 0]}
@@ -259,13 +264,13 @@ export const HomePage = () => {
                       <p className="text-sm">{spot.address}</p>
                       <p className="text-sm font-medium text-blue-600">${spot.price}/{spot.price_type}</p>
                       <p className="text-xs mt-1">
-                        {spot.available_slots} of {spot.total_slots} spots available
+                        {spot.available_slots} {t('of_total_spots_available')} {spot.total_slots} {t('spots_available')}
                       </p>
                       <button 
                         onClick={() => handleSpotClick(spot.id)}
                         className="mt-2 text-xs text-blue-600 hover:text-blue-800"
                       >
-                        View Details
+                        {t('view_details')}
                       </button>
                     </div>
                   </Popup>
@@ -283,17 +288,17 @@ export const HomePage = () => {
       <div className="max-w-7xl mx-auto px-6 pb-12">
         <div className="flex justify-between items-center mb-8">
           <h2 className="text-3xl font-bold text-gray-900">
-            Available Parking Spots
+            {t('available_parking_spots')}
           </h2>
           <p className="text-gray-600">
-            {displaySpots.length} spot{displaySpots.length !== 1 ? 's' : ''} found
+            {displaySpots.length} {displaySpots.length !== 1 ? t('spots_found') : t('spot_found')}
           </p>
         </div>
 
         {/* Parking Spots Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {displaySpots.map((spot: ParkingSpot) => (
-            <ParkingSpotCard key={spot.id} spot={spot} />
+            <ParkingSpotCard key={spot.id} spot={convertSupabaseToUI(spot)} />
           ))}
         </div>
 
@@ -303,10 +308,10 @@ export const HomePage = () => {
               <MapPin className="w-16 h-16 mx-auto" />
             </div>
             <h3 className="text-xl font-semibold text-gray-900 mb-2">
-              No parking spots found
+              {t('no_parking_spots_found')}
             </h3>
             <p className="text-gray-600">
-              Try adjusting your search criteria or check back later for new listings.
+              {t('try_adjusting_search_criteria')}
             </p>
           </div>
         )}
@@ -316,10 +321,10 @@ export const HomePage = () => {
       <div className="bg-blue-600 text-white py-16">
         <div className="max-w-4xl mx-auto text-center px-6">
           <h2 className="text-3xl font-bold mb-4">
-            Have a parking space to rent?
+            {t('have_parking_space_to_rent')}
           </h2>
           <p className="text-xl mb-8 text-blue-100">
-            Start earning money by sharing your unused parking space with others.
+            {t('start_earning_money')}
           </p>
           <Button 
             size="lg" 
@@ -327,7 +332,7 @@ export const HomePage = () => {
             className="bg-white text-blue-600 hover:bg-gray-100"
             onClick={() => navigate('/admin/add-spot')}
           >
-            List Your Space
+            {t('list_your_space')}
           </Button>
         </div>
       </div>

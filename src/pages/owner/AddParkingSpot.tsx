@@ -8,15 +8,16 @@ import {
   Navigation
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { supabase } from '../../lib/supabase';
 import { MapPicker } from '../../components/MapPicker';
 
 export const AddParkingSpot: React.FC = () => {
   const navigate = useNavigate();
   const { profile } = useAuth();
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [gettingLocation, setGettingLocation] = useState(false);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -289,7 +290,7 @@ export const AddParkingSpot: React.FC = () => {
   };
 
   // ถ้ายังโหลด profile
-  if (!profile) return <div>Loading...</div>;
+  if (!profile) return <div>{t('loading')}</div>;
 
   // ถ้า owner ยังไม่ได้รับอนุมัติ
   if (profile.role === 'owner' && profile.verify_status !== 'approved') {
@@ -314,7 +315,7 @@ export const AddParkingSpot: React.FC = () => {
         <div className="bg-white rounded-xl shadow-lg p-8">
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              Add New Parking Spot
+              {t('add_new_parking_spot')}
             </h1>
             <p className="text-gray-600">
               Fill in the details to create a new parking spot listing
@@ -330,7 +331,7 @@ export const AddParkingSpot: React.FC = () => {
           <form onSubmit={handleSubmit} className="space-y-8">
             {/* Basic Information */}
             <div className="bg-gray-50 rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Basic Information</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('basic_information')}</h3>
               <div className="grid md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">

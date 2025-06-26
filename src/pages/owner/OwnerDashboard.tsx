@@ -7,11 +7,8 @@ import {
   Calendar, 
   Star, 
   DollarSign,
-  Users,
-  Car,
   Plus,
   AlertTriangle,
-  TrendingUp,
   Clock,
   CheckCircle,
   XCircle,
@@ -22,12 +19,8 @@ import {
   Bell,
   Download,
   Search,
-  Filter,
-  MoreHorizontal,
   Settings,
   FileText,
-  PieChart,
-  CalendarDays,
   Save,
   CreditCard,
   Building2,
@@ -42,12 +35,13 @@ import {
 import { QRScanner } from '../../components/QRScanner';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 // Separate component for Account Name input to prevent re-render issues
 const AccountNameInput = memo(({ 
   value, 
   onChange, 
-  placeholder = "Your name or business name",
+  placeholder,
   id 
 }: {
   value: string;
@@ -158,7 +152,9 @@ const QRCodeSettings = memo(({
   handleQrImageUpload,
   handlePaymentMethodSave,
   paymentLoading,
-  qrImagePreview 
+  qrImagePreview,
+  t,
+  copyQRCode
 }: {
   paymentMethods: any;
   handleQrAccountNameChange: (value: string) => void;
@@ -166,28 +162,23 @@ const QRCodeSettings = memo(({
   handlePaymentMethodSave: (method: 'qr_code') => void;
   paymentLoading: boolean;
   qrImagePreview: string;
+  t: (key: string) => string;
+  copyQRCode: () => void;
 }) => {
-  const copyQRCode = () => {
-    if (paymentMethods.qr_code.qr_code_url) {
-      navigator.clipboard.writeText(paymentMethods.qr_code.qr_code_url);
-      alert('QR Code URL copied to clipboard!');
-    }
-  };
-
   return (
     <div className="space-y-4 pt-4 border-t border-gray-200">
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Account Name</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">{t('account_name')}</label>
         <AccountNameInput
           key="qr-account-name"
           id="qr-account-name"
           value={paymentMethods.qr_code.account_name}
           onChange={handleQrAccountNameChange}
-          placeholder="Your name or business name"
+          placeholder={t('account_name_placeholder')}
         />
       </div>
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">QR Code Image</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">{t('qr_code_image')}</label>
         <div className="space-y-3">
           <div className="flex items-center space-x-3">
             <input
@@ -202,7 +193,7 @@ const QRCodeSettings = memo(({
               className="flex items-center space-x-2 px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
             >
               <Upload className="h-4 w-4" />
-              <span>Upload QR Code</span>
+              <span>{t('upload_qr_code')}</span>
             </label>
             {(qrImagePreview || paymentMethods.qr_code.qr_code_url) && (
               <button
@@ -211,7 +202,7 @@ const QRCodeSettings = memo(({
                 className="flex items-center space-x-2 px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
               >
                 <Copy className="h-4 w-4" />
-                <span>Copy URL</span>
+                <span>{t('copy_url')}</span>
               </button>
             )}
           </div>
@@ -219,12 +210,12 @@ const QRCodeSettings = memo(({
             <div className="flex items-center space-x-3">
               <img
                 src={qrImagePreview || paymentMethods.qr_code.qr_code_url}
-                alt="QR Code Preview"
+                alt={t('qr_code_preview')}
                 className="w-24 h-24 object-cover rounded-lg border border-gray-200"
               />
               <div className="text-sm text-gray-600">
-                <p>QR Code {qrImagePreview ? 'ready to upload' : 'uploaded successfully'}</p>
-                <p className="text-xs">Customers will see this QR code for payments</p>
+                <p>{t(qrImagePreview ? 'qr_ready_upload' : 'qr_uploaded_success')}</p>
+                <p className="text-xs">{t('qr_payment_description')}</p>
               </div>
             </div>
           )}
@@ -239,12 +230,12 @@ const QRCodeSettings = memo(({
           {paymentLoading ? (
             <>
               <RefreshCw className="h-4 w-4 animate-spin" />
-              <span>Saving...</span>
+              <span>{t('saving')}</span>
             </>
           ) : (
             <>
               <Save className="h-4 w-4" />
-              <span>Save QR Payment</span>
+              <span>{t('save_qr_payment')}</span>
             </>
           )}
         </button>
@@ -256,6 +247,7 @@ const QRCodeSettings = memo(({
 QRCodeSettings.displayName = 'QRCodeSettings';
 
 export const OwnerDashboard: React.FC = () => {
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<'home' | 'dashboard' | 'spots' | 'bookings' | 'reviews' | 'reports' | 'settings' | 'payments'>('home');
   const [showQRScanner, setShowQRScanner] = useState(false);
   const [scanResult, setScanResult] = useState<string | null>(null);
@@ -311,12 +303,12 @@ export const OwnerDashboard: React.FC = () => {
   });
 
   const statusOptions = [
-    { value: '', label: 'All' },
-    { value: 'pending', label: 'Pending' },
-    { value: 'confirmed', label: 'Confirmed' },
-    { value: 'active', label: 'Active' },
-    { value: 'completed', label: 'Completed' },
-    { value: 'cancelled', label: 'Cancelled' },
+    { value: '', label: t('all') },
+    { value: 'pending', label: t('pending') },
+    { value: 'confirmed', label: t('confirmed') },
+    { value: 'active', label: t('active') },
+    { value: 'completed', label: t('completed') },
+    { value: 'cancelled', label: t('cancelled') },
   ];
 
 
@@ -532,7 +524,7 @@ export const OwnerDashboard: React.FC = () => {
       const fileName = `qr-${profile?.id}-${Date.now()}.${file.name.split('.').pop()}`;
       const filePath = `payment-qr-codes/${fileName}`;
 
-      const { data, error } = await supabase.storage
+      const { error } = await supabase.storage
         .from('payment-qr-codes')
         .upload(filePath, file);
 
@@ -545,7 +537,7 @@ export const OwnerDashboard: React.FC = () => {
       return publicUrl;
     } catch (error) {
       console.error('Error uploading QR image:', error);
-      throw new Error('Failed to upload QR code image');
+      throw new Error(t('failed_upload_qr'));
     }
   };
 
@@ -571,14 +563,6 @@ export const OwnerDashboard: React.FC = () => {
     setPaymentMethods(prev => ({
       ...prev,
       bank_account: { ...prev.bank_account, account_name: value }
-    }));
-  }, []);
-
-  // Generic handler (keeping for compatibility)
-  const handleAccountNameChange = useCallback((method: 'qr_code' | 'bank_account', value: string) => {
-    setPaymentMethods(prev => ({
-      ...prev,
-      [method]: { ...prev[method], account_name: value }
     }));
   }, []);
 
@@ -644,7 +628,7 @@ export const OwnerDashboard: React.FC = () => {
         }));
       }
       
-      alert(`${method === 'qr_code' ? 'QR Code' : 'Bank Account'} payment method saved successfully!`);
+      alert(method === 'qr_code' ? t('qr_payment_saved') : t('bank_payment_saved'));
       setQrImageFile(null);
       setQrImagePreview('');
     } catch (err: any) {
@@ -658,7 +642,7 @@ export const OwnerDashboard: React.FC = () => {
   const copyQRCode = () => {
     if (paymentMethods.qr_code.qr_code_url) {
       navigator.clipboard.writeText(paymentMethods.qr_code.qr_code_url);
-      alert('QR Code URL copied to clipboard!');
+      alert(t('qr_url_copied'));
     }
   };
 
@@ -671,30 +655,26 @@ export const OwnerDashboard: React.FC = () => {
 
   const stats = [
     { 
-      label: 'Today\'s Revenue', 
+      label: t('todays_revenue'), 
       value: `$${bookings.filter(b => new Date(b.created_at).toDateString() === new Date().toDateString()).reduce((sum, b) => sum + b.total_cost, 0)}`, 
-      change: '+15%', 
       icon: DollarSign, 
       color: 'text-green-600' 
     },
     { 
-      label: 'Active Bookings', 
+      label: t('active_bookings'), 
       value: bookings.filter(b => b.status === 'active' || b.status === 'confirmed').length.toString(), 
-      change: '+8%', 
       icon: Calendar, 
       color: 'text-blue-600' 
     },
     { 
-      label: 'Total Spots', 
+      label: t('total_spots'), 
       value: parkingSpots.length.toString(), 
-      change: '0%', 
       icon: MapPin, 
       color: 'text-purple-600' 
     },
     { 
-      label: 'Avg Rating', 
+      label: t('avg_rating'), 
       value: calculateAverageRating(), 
-      change: '+0.2', 
       icon: Star, 
       color: 'text-yellow-600' 
     },
@@ -740,7 +720,7 @@ export const OwnerDashboard: React.FC = () => {
         
       if (error || !bookingData) {
         setScanStatus('error');
-        setScanMessage('Invalid QR code or PIN. No matching booking found.');
+        setScanMessage(t('invalid_qr_pin'));
         return;
       }
       
@@ -751,7 +731,7 @@ export const OwnerDashboard: React.FC = () => {
           if (qrData.type === 'parking_verification' && qrData.spotId) {
             if (qrData.spotId !== bookingData.spot_id) {
               setScanStatus('error');
-              setScanMessage('QR code is not valid for this parking spot.');
+              setScanMessage(t('qr_not_valid_spot'));
               return;
             }
           }
@@ -775,7 +755,7 @@ export const OwnerDashboard: React.FC = () => {
       
       if (bookingData.payment_status !== 'verified') {
         setScanStatus('error');
-        setScanMessage('Payment for this booking has not been verified yet.');
+        setScanMessage(t('payment_not_verified'));
         return;
       }
   
@@ -826,14 +806,14 @@ export const OwnerDashboard: React.FC = () => {
         setScanMessage('Exit confirmed! Booking is now completed.');
       } else if (bookingData.status === 'completed') {
         setScanStatus('success');
-        setScanMessage('This booking has already been completed. QR/PIN verified - Status: COMPLETED');
+        setScanMessage(t('qr_pin_verified_completed'));
       } else if (bookingData.status === 'cancelled') {
         // แสดงสถานะยกเลิกแต่ยังทำการยืนยันได้
         setScanStatus('success');
         setScanMessage(`การจอง #${bookingData.id.slice(-6)} ถูกยกเลิกไปแล้ว - QR/PIN ยืนยันสำเร็จ`);
       } else {
         setScanStatus('success');
-        setScanMessage(`QR/PIN verified. Booking status: ${bookingData.status.toUpperCase()}`);
+        setScanMessage(`${t('qr_pin_verified_status')}: ${bookingData.status.toUpperCase()}`);
       }
   
       setTimeout(() => {
@@ -915,16 +895,16 @@ export const OwnerDashboard: React.FC = () => {
             <QrCode className="h-10 w-10 text-blue-600" />
           </div>
           <h3 className="text-xl font-bold text-gray-900 mb-2">
-            Entry/Exit Validation
+            {t('entry_exit_validation')}
           </h3>
           <p className="text-gray-600 mb-6">
-            Scan customer QR codes or enter PIN for parking entry and exit validation
+            {t('entry_exit_validation_description')}
           </p>
           <button
             onClick={() => setShowQRScanner(true)}
             className="bg-blue-600 text-white px-8 py-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors text-lg"
           >
-            Open Scanner
+            {t('open_scanner')}
           </button>
             {scanResult && (
               <div className={`mt-4 p-4 rounded-lg ${
@@ -957,7 +937,7 @@ export const OwnerDashboard: React.FC = () => {
       {/* Today's Summary */}
       <div className="bg-white rounded-xl shadow-md p-6">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-900">Today's Bookings</h3>
+          <h3 className="text-lg font-semibold text-gray-900">{t('todays_bookings')}</h3>
           <span className="text-sm text-gray-500">{new Date().toLocaleDateString()}</span>
         </div>
         
@@ -967,7 +947,7 @@ export const OwnerDashboard: React.FC = () => {
               <div key={booking.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                 <div className="flex-1">
                   <p className="text-sm font-medium text-gray-900">
-                    Booking #{booking.id.slice(-6)} - {booking.status}
+                    {t('booking_hash', { id: booking.id.slice(-6), status: booking.status })}
                   </p>
                   <p className="text-xs text-gray-500">
                     {new Date(booking.created_at).toLocaleString()}
@@ -977,7 +957,7 @@ export const OwnerDashboard: React.FC = () => {
             ))
           ) : (
             <div className="text-center py-4 text-gray-500">
-              No bookings today
+              {t('no_bookings_today')}
             </div>
           )}
         </div>
@@ -985,15 +965,15 @@ export const OwnerDashboard: React.FC = () => {
 
       {/* Quick Actions */}
       <div className="bg-white rounded-xl shadow-md p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('quick_actions')}</h3>
         <div className="grid grid-cols-2 gap-4">
           <button className="flex items-center space-x-3 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
             <AlertTriangle className="h-6 w-6 text-orange-600" />
-            <span className="font-medium">Report Issue</span>
+            <span className="font-medium">{t('report_issue')}</span>
           </button>
           <button className="flex items-center space-x-3 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
             <Bell className="h-6 w-6 text-blue-600" />
-            <span className="font-medium">Notifications</span>
+            <span className="font-medium">{t('notifications')}</span>
           </button>
         </div>
       </div>
@@ -1017,11 +997,6 @@ export const OwnerDashboard: React.FC = () => {
                 }`}>
                   <Icon className={`h-6 w-6 ${stat.color}`} />
                 </div>
-                <span className={`text-sm font-medium ${
-                  stat.change.startsWith('+') ? 'text-green-600' : 'text-gray-600'
-                }`}>
-                  {stat.change}
-                </span>
               </div>
               <div className="text-2xl font-bold text-gray-900 mb-1">
                 {stat.value}
@@ -1059,7 +1034,7 @@ export const OwnerDashboard: React.FC = () => {
 
       {/* Recent Activity */}
       <div className="bg-white rounded-xl shadow-md p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('recent_activity')}</h3>
         <div className="space-y-4">
           {bookings.slice(0, 4).map((booking) => (
             <div key={booking.id} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
@@ -1088,13 +1063,13 @@ export const OwnerDashboard: React.FC = () => {
     <div className="space-y-6">
       <div className="bg-white rounded-xl shadow-md p-6">
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-semibold text-gray-900">My Parking Spots</h3>
+          <h3 className="text-lg font-semibold text-gray-900">{t('my_parking_spots')}</h3>
           <Link
             to="/owner/add-spot"
             className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
           >
             <Plus className="h-4 w-4" />
-            <span>Add New Spot</span>
+            <span>{t('add_new_spot')}</span>
           </Link>
         </div>
 
@@ -1114,15 +1089,15 @@ export const OwnerDashboard: React.FC = () => {
                             : 'bg-gray-100 text-gray-800'
                       }`}>
                         {!spot.is_approved
-                          ? 'Pending Approval'
+                          ? t('pending_approval')
                           : spot.is_active
-                            ? 'Active'
-                            : 'Inactive'}
+                            ? t('active')
+                            : t('inactive')}
                       </span>
                     </div>
                     <p className="text-sm text-gray-600 mb-1">{spot.address}</p>
                     <div className="flex items-center space-x-4 text-sm text-gray-600">
-                      <span>{spot.available_slots}/{spot.total_slots} available</span>
+                      <span>{t('available_slots', { available: spot.available_slots, total: spot.total_slots })}</span>
                       <span>•</span>
                       <span>${spot.price}/{spot.price_type}</span>
                     </div>
@@ -1140,7 +1115,7 @@ export const OwnerDashboard: React.FC = () => {
                     {/* <Link
                       to={`/owner/availability/${spot.id}`}
                       className="p-2 text-gray-600 hover:text-purple-600 transition-colors"
-                      title="Manage Availability"
+                      title={t('manage_availability')}
                     >
                       <CalendarDays className="h-4 w-4" />
                     </Link> */}
@@ -1154,13 +1129,13 @@ export const OwnerDashboard: React.FC = () => {
           ) : (
             <div className="text-center py-8 text-gray-500">
               <MapPin className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-              <p>No parking spots found</p>
+              <p>{t('no_parking_spots_found')}</p>
               <Link
                 to="/owner/add-spot"
                 className="inline-flex items-center space-x-2 mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
               >
                 <Plus className="h-4 w-4" />
-                <span>Add Your First Spot</span>
+                <span>{t('add_first_spot')}</span>
               </Link>
             </div>
           )}
@@ -1173,13 +1148,13 @@ export const OwnerDashboard: React.FC = () => {
     <div className="space-y-6">
       <div className="bg-white rounded-xl shadow-md p-4 md:p-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
-          <h3 className="text-lg font-semibold text-gray-900">Booking Management</h3>
+          <h3 className="text-lg font-semibold text-gray-900">{t('booking_management')}</h3>
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
             <div className="relative w-full sm:w-64 flex">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
               <input
                 type="text"
-                placeholder="Search bookings..."
+                placeholder={t('search_bookings')}
                 value={searchInput}
                 onChange={e => setSearchInput(e.target.value)}
                 onKeyDown={e => {
@@ -1190,9 +1165,9 @@ export const OwnerDashboard: React.FC = () => {
               <button
                 onClick={() => setSearchQuery(searchInput)}
                 className="px-4 py-2 bg-blue-600 text-white rounded-r-lg hover:bg-blue-700 transition-colors text-sm"
-                title="Search"
+                title={t('search')}
               >
-                Search
+                {t('search')}
               </button>
             </div>
             <select
@@ -1211,11 +1186,11 @@ export const OwnerDashboard: React.FC = () => {
           <table className="w-full text-xs md:text-sm">
             <thead>
               <tr className="border-b border-gray-200">
-                <th className="text-left py-2 px-2 font-semibold text-gray-900">ID</th>
-                <th className="text-left py-2 px-2 font-semibold text-gray-900">Date</th>
-                <th className="text-left py-2 px-2 font-semibold text-gray-900">Customer</th>
-                <th className="text-left py-2 px-2 font-semibold text-gray-900">Status</th>
-                <th className="hidden sm:table-cell text-left py-2 px-2 font-semibold text-gray-900">Amount</th>
+                <th className="text-left py-2 px-2 font-semibold text-gray-900">{t('table_id')}</th>
+                <th className="text-left py-2 px-2 font-semibold text-gray-900">{t('table_date')}</th>
+                <th className="text-left py-2 px-2 font-semibold text-gray-900">{t('table_customer')}</th>
+                <th className="text-left py-2 px-2 font-semibold text-gray-900">{t('table_status')}</th>
+                <th className="hidden sm:table-cell text-left py-2 px-2 font-semibold text-gray-900">{t('table_amount')}</th>
                 {/* <th className="hidden sm:table-cell text-left py-2 px-2 font-semibold text-gray-900">Actions</th> */}
               </tr>
             </thead>
@@ -1249,7 +1224,7 @@ export const OwnerDashboard: React.FC = () => {
                       {booking.status}
                     </span>
                     <div className="text-[10px] text-gray-500 mt-1">
-                      Payment: {booking.payment_status}
+                      {t('payment_colon', { status: booking.payment_status })}
                     </div>
                   </td>
                   <td className="hidden sm:table-cell py-2 px-2 font-semibold text-gray-900">${booking.total_cost}</td>
@@ -1270,7 +1245,7 @@ export const OwnerDashboard: React.FC = () => {
               {filteredBookings.length === 0 && (
                 <tr>
                   <td colSpan={6} className="py-6 text-center text-gray-400">
-                    No bookings found.
+                    {t('no_bookings_found')}
                   </td>
                 </tr>
               )}
@@ -1285,7 +1260,7 @@ export const OwnerDashboard: React.FC = () => {
     <div className="space-y-6">
       <div className="bg-white rounded-xl shadow-md p-6">
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-semibold text-gray-900">Reviews & Feedback</h3>
+          <h3 className="text-lg font-semibold text-gray-900">{t('reviews_feedback')}</h3>
           <div className="text-sm text-gray-500">
             <div className="text-2xl font-bold text-gray-900">{calculateAverageRating()}</div>
             <div className="flex items-center space-x-1">
@@ -1293,7 +1268,7 @@ export const OwnerDashboard: React.FC = () => {
                 <Star key={i} className={`h-4 w-4 ${i < Math.floor(parseFloat(calculateAverageRating())) ? 'text-yellow-400 fill-current' : 'text-gray-300'}`} />
               ))}
             </div>
-            <div className="text-sm text-gray-500">{reviews.length} review{reviews.length !== 1 ? 's' : ''}</div>
+            <div className="text-sm text-gray-500">{t('reviews_count', { count: reviews.length, plural: reviews.length !== 1 ? 's' : '' })}</div>
           </div>
         </div>
         
@@ -1305,7 +1280,7 @@ export const OwnerDashboard: React.FC = () => {
                   <div>
                     <div className="flex items-center space-x-2 mb-1">
                       <span className="font-semibold text-gray-900">
-                        {review.is_anonymous ? 'Anonymous Customer' : review.profiles?.name || 'Customer Review'}
+                        {review.is_anonymous ? t('anonymous_customer') : review.profiles?.name || t('customer_review')}
                       </span>
                       <div className="flex items-center">
                         {[...Array(5)].map((_, i) => (
@@ -1349,8 +1324,8 @@ export const OwnerDashboard: React.FC = () => {
         ) : (
           <div className="text-center py-8 text-gray-500">
             <Star className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-            <p>No reviews yet</p>
-            <p className="text-sm">Reviews will appear here once customers start rating your parking spots</p>
+            <p>{t('no_reviews_yet')}</p>
+            <p className="text-sm">{t('reviews_will_appear')}</p>
           </div>
         )}
       </div>
@@ -1361,10 +1336,10 @@ export const OwnerDashboard: React.FC = () => {
     <div className="space-y-6">
       <div className="bg-white rounded-xl shadow-md p-6">
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-semibold text-gray-900">Reports & Analytics</h3>
+          <h3 className="text-lg font-semibold text-gray-900">{t('reports_analytics')}</h3>
           <button className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
             <Download className="h-4 w-4" />
-            <span>Export Report</span>
+            <span>{t('export_report')}</span>
           </button>
         </div>
 
@@ -1372,28 +1347,28 @@ export const OwnerDashboard: React.FC = () => {
           <div className="bg-green-50 rounded-lg p-4">
             <div className="flex items-center space-x-2 mb-2">
               <DollarSign className="h-5 w-5 text-green-600" />
-              <span className="font-medium text-green-900">Revenue</span>
+              <span className="font-medium text-green-900">{t('revenue')}</span>
             </div>
             <div className="text-2xl font-bold text-green-900">
               ${bookings.reduce((sum, b) => sum + b.total_cost, 0)}
             </div>
-            <div className="text-sm text-green-700">Total earned</div>
+            <div className="text-sm text-green-700">{t('total_earned')}</div>
           </div>
           <div className="bg-blue-50 rounded-lg p-4">
             <div className="flex items-center space-x-2 mb-2">
               <Calendar className="h-5 w-5 text-blue-600" />
-              <span className="font-medium text-blue-900">Bookings</span>
+              <span className="font-medium text-blue-900">{t('bookings')}</span>
             </div>
             <div className="text-2xl font-bold text-blue-900">{bookings.length}</div>
-            <div className="text-sm text-blue-700">Total bookings</div>
+            <div className="text-sm text-blue-700">{t('total_bookings')}</div>
           </div>
           <div className="bg-purple-50 rounded-lg p-4">
             <div className="flex items-center space-x-2 mb-2">
               <MapPin className="h-5 w-5 text-purple-600" />
-              <span className="font-medium text-purple-900">Spots</span>
+              <span className="font-medium text-purple-900">{t('spots')}</span>
             </div>
             <div className="text-2xl font-bold text-purple-900">{parkingSpots.length}</div>
-            <div className="text-sm text-purple-700">Active spots</div>
+            <div className="text-sm text-purple-700">{t('active_spots')}</div>
           </div>
         </div>
       </div>
@@ -1405,49 +1380,49 @@ export const OwnerDashboard: React.FC = () => {
       {/* Owner Information - Read Only */}
       <div className="bg-white rounded-xl shadow-md p-6">
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-semibold text-gray-900">Owner Information</h3>
+          <h3 className="text-lg font-semibold text-gray-900">{t('owner_information')}</h3>
           <div className="text-sm text-gray-500">
-            Edit in <Link to="/profile" className="text-blue-600 hover:text-blue-800 font-medium">Profile Page</Link>
+            {t('edit_in_profile')} <Link to="/profile" className="text-blue-600 hover:text-blue-800 font-medium">{t('profile_page')}</Link>
           </div>
         </div>
         
         <div className="grid md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('full_name')}</label>
             <div className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-700">
-              {profile?.name || 'Not set'}
+              {profile?.name || t('not_set')}
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('email')}</label>
             <div className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-700">
-              {profile?.email || 'Not set'}
+              {profile?.email || t('not_set')}
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('phone_number')}</label>
             <div className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-700">
-              {profile?.phone || 'Not set'}
+              {profile?.phone || t('not_set')}
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Business Name</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('business_name')}</label>
             <div className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-700">
-              {profile?.business_name || 'Not set'}
+              {profile?.business_name || t('not_set')}
             </div>
           </div>
         </div>
         <div className="mt-4">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Business Address</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">{t('business_address')}</label>
           <div className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-700">
-            {profile?.business_address || 'Not set'}
+            {profile?.business_address || t('not_set')}
           </div>
         </div>
       </div>
 
       {/* Payment Methods */}
       <div className="bg-white rounded-xl shadow-md p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-6">Payment Methods</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-6">{t('payment_methods')}</h3>
         
         <div className="space-y-6">
           {/* QR Code Payment */}
@@ -1458,15 +1433,15 @@ export const OwnerDashboard: React.FC = () => {
                   <QrCode className="h-5 w-5 text-blue-600" />
                 </div>
                 <div>
-                  <h4 className="font-medium text-gray-900">QR Code Payment</h4>
-                  <p className="text-sm text-gray-600">Accept payments via QR code (PromptPay, etc.)</p>
+                  <h4 className="font-medium text-gray-900">{t('qr_code_payment')}</h4>
+                  <p className="text-sm text-gray-600">{t('qr_payment_description')}</p>
                 </div>
               </div>
               <div className="flex items-center space-x-3">
                 <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                   paymentMethods.qr_code.enabled ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
                 }`}>
-                  {paymentMethods.qr_code.enabled ? 'Active' : 'Inactive'}
+                  {paymentMethods.qr_code.enabled ? t('active') : t('inactive')}
                 </span>
                 <button
                   onClick={() => handlePaymentMethodToggle('qr_code')}
@@ -1485,6 +1460,8 @@ export const OwnerDashboard: React.FC = () => {
                 handlePaymentMethodSave={handlePaymentMethodSave}
                 paymentLoading={paymentLoading}
                 qrImagePreview={qrImagePreview}
+                t={t}
+                copyQRCode={copyQRCode}
               />
             )}
           </div>
@@ -1497,13 +1474,13 @@ export const OwnerDashboard: React.FC = () => {
                   <Building2 className="h-5 w-5 text-green-600" />
                 </div>
                 <div>
-                  <h4 className="font-medium text-gray-900">Bank Account Transfer</h4>
-                  <p className="text-sm text-gray-600">Accept direct bank transfers (Coming Soon)</p>
+                  <h4 className="font-medium text-gray-900">{t('bank_account_transfer')}</h4>
+                  <p className="text-sm text-gray-600">{t('bank_transfer_description')}</p>
                 </div>
               </div>
               <div className="flex items-center space-x-3">
                 <span className="px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                  Next Phase
+                  {t('next_phase')}
                 </span>
                 <button
                   disabled
@@ -1519,7 +1496,7 @@ export const OwnerDashboard: React.FC = () => {
                 <div className="flex items-center space-x-2">
                   <AlertTriangle className="h-5 w-5 text-yellow-600" />
                   <p className="text-sm text-yellow-800">
-                    Bank account payment integration will be available in the next phase of development.
+                    {t('bank_integration_notice')}
                   </p>
                 </div>
               </div>
@@ -1530,13 +1507,13 @@ export const OwnerDashboard: React.FC = () => {
 
       {/* Notification Preferences */}
       <div className="bg-white rounded-xl shadow-md p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-6">Notification Preferences</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-6">{t('notification_preferences')}</h3>
         <div className="space-y-3">
           {[
-            { label: 'New Bookings', description: 'Get notified when customers make new bookings' },
-            { label: 'Payment Received', description: 'Receive alerts when payments are processed' },
-            { label: 'Customer Reviews', description: 'Be notified of new customer reviews' },
-            { label: 'System Updates', description: 'Important system and feature updates' },
+            { label: t('new_bookings'), description: t('new_bookings_desc') },
+            { label: t('payment_received'), description: t('payment_received_desc') },
+            { label: t('customer_reviews'), description: t('customer_reviews_desc') },
+            { label: t('system_updates'), description: t('system_updates_desc') },
           ].map((item, index) => (
             <div key={index} className="flex items-center justify-between py-3 border-b border-gray-200 last:border-b-0">
               <div>
@@ -1558,15 +1535,15 @@ export const OwnerDashboard: React.FC = () => {
     <div className="space-y-6">
       <div className="bg-white rounded-xl shadow-md p-6">
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-semibold text-gray-900">Payment Verification</h3>
+          <h3 className="text-lg font-semibold text-gray-900">{t('payment_verification')}</h3>
           <div className="flex items-center space-x-2">
             <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm font-medium">
-              {pendingPayments.length} Pending
+              {t('pending_count', { count: pendingPayments.length })}
             </span>
             <button 
               onClick={() => loadData()}
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              title="Refresh"
+              title={t('refresh')}
             >
               <RefreshCw className="h-4 w-4 text-gray-600" />
             </button>
@@ -1582,7 +1559,7 @@ export const OwnerDashboard: React.FC = () => {
                     <div className="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden">
                       <img 
                         src={payment.image_url} 
-                        alt="Payment slip" 
+                        alt={t('payment_slip')} 
                         className="w-full h-full object-cover"
                       />
                     </div>
@@ -1591,7 +1568,7 @@ export const OwnerDashboard: React.FC = () => {
                         Booking #{payment.booking?.id.slice(-6) || 'Unknown'}
                       </h4>
                       <p className="text-sm text-gray-600">
-                        {payment.booking?.profiles?.name || 'Unknown customer'}
+                        {payment.booking?.profiles?.name || t('unknown_customer')}
                       </p>
                       {payment.booking?.vehicles && (
                         <p className="text-sm text-gray-600">
@@ -1611,7 +1588,7 @@ export const OwnerDashboard: React.FC = () => {
                       className="flex-1 md:flex-none flex items-center justify-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
                     >
                       <Eye className="h-4 w-4" />
-                      <span>Verify</span>
+                      <span>{t('verify')}</span>
                     </button>
                   </div>
                 </div>
@@ -1621,8 +1598,8 @@ export const OwnerDashboard: React.FC = () => {
         ) : (
           <div className="text-center py-8 text-gray-500">
             <CheckCircle className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-            <p>No pending payments to verify</p>
-            <p className="text-sm">All payment slips have been processed</p>
+            <p>{t('no_pending_payments')}</p>
+            <p className="text-sm">{t('all_payments_processed')}</p>
           </div>
         )}
       </div>
@@ -1646,7 +1623,7 @@ export const OwnerDashboard: React.FC = () => {
             onClick={loadData}
             className="mt-2 text-red-600 hover:text-red-800 font-medium"
           >
-            Try again
+            {t('try_again')}
           </button>
         </div>
       );
@@ -1670,10 +1647,10 @@ export const OwnerDashboard: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Parking Owner Dashboard
+            {t('parking_owner_dashboard')}
           </h1>
           <p className="text-gray-600">
-            Manage your parking spots and monitor performance
+            {t('dashboard_description')}
           </p>
         </div>
 
@@ -1681,14 +1658,14 @@ export const OwnerDashboard: React.FC = () => {
         <div className="bg-white rounded-xl shadow-md mb-6">
           <div className="flex border-b border-gray-200 overflow-x-auto">
             {[
-              { id: 'home', label: 'Home', icon: QrCode },
-              { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
-              { id: 'spots', label: 'My Spots', icon: MapPin },
-              { id: 'bookings', label: 'Bookings', icon: Calendar },
-              { id: 'payments', label: 'Payments', icon: CreditCard, badge: pendingPayments.length },
-              { id: 'reviews', label: 'Reviews', icon: Star },
-              { id: 'reports', label: 'Reports', icon: FileText },
-              { id: 'settings', label: 'Settings', icon: Settings },
+              { id: 'home', label: t('home'), icon: QrCode },
+              { id: 'dashboard', label: t('dashboard'), icon: BarChart3 },
+              { id: 'spots', label: t('my_spots'), icon: MapPin },
+              { id: 'bookings', label: t('bookings'), icon: Calendar },
+              { id: 'payments', label: t('payments'), icon: CreditCard, badge: pendingPayments.length },
+              { id: 'reviews', label: t('reviews'), icon: Star },
+              { id: 'reports', label: t('reports'), icon: FileText },
+              { id: 'settings', label: t('settings'), icon: Settings },
             ].map((tab) => {
               const Icon = tab.icon;
               return (
@@ -1789,8 +1766,8 @@ export const OwnerDashboard: React.FC = () => {
                                 selectedPayment.ocr_verification ? 'text-green-700' : 'text-yellow-700'
                               }`}>
                                 {selectedPayment.ocr_verification 
-                                  ? 'Automatically verified' 
-                                  : 'Manual verification needed'}
+                                  ? t('automatically_verified')
+                                  : t('manual_verification_needed')}
                               </span>
                             </div>
                             {selectedPayment.ocr_confidence > 0 && (

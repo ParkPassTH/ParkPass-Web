@@ -23,6 +23,7 @@ import {
   X
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { ParkingSpot } from '../../lib/supabase';
 
 function isSpotOpenNow(spot: any): boolean {
@@ -64,6 +65,7 @@ function isSpotOpenNow(spot: any): boolean {
 export const ParkingSpotDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { t, language } = useLanguage();
   const [isFavorited, setIsFavorited] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [spot, setSpot] = useState<ParkingSpot | null>(null);
@@ -201,10 +203,10 @@ export const ParkingSpotDetail: React.FC = () => {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-xl font-semibold text-gray-900 mb-2">
-            Parking spot not found
+            {t('parking_spot_not_found')}
           </h2>
           <Link to="/" className="text-blue-600 hover:text-blue-800">
-            Return to home
+            {t('return_to_home')}
           </Link>
         </div>
       </div>
@@ -227,6 +229,27 @@ export const ParkingSpotDetail: React.FC = () => {
   const getAmenityIcon = (amenity: string) => {
     const Icon = amenityIconMap[amenity] || Car;
     return <Icon className="h-5 w-5 text-blue-600" />;
+  };
+
+  // Function to translate amenity names
+  const translateAmenity = (amenity: string) => {
+    const amenityMap: Record<string, string> = {
+      'EV Charging': 'ev_charging',
+      'CCTV Security': 'cctv_security', 
+      'Covered Parking': 'covered_parking',
+      'Free WiFi': 'free_wifi',
+      'Cafe Nearby': 'cafe_nearby',
+      'Car Maintenance': 'car_maintenance',
+      'WiFi': 'wifi',
+      'Security Camera': 'security_camera',
+      'Disabled Access': 'disabled_access',
+      'Valet Service': 'valet_service',
+      'Restroom': 'restroom',
+      'Lighting': 'lighting'
+    };
+    
+    const translationKey = amenityMap[amenity];
+    return translationKey ? t(translationKey) : amenity;
   };
 
   // Parse operating hours
@@ -269,7 +292,7 @@ export const ParkingSpotDetail: React.FC = () => {
   const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
   // Get owner contact information
-  const ownerContact = (spot as any).ownerProfile?.phone || "Contact Owner";
+  const ownerContact = (spot as any).ownerProfile?.phone || t('contact_owner');
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -277,7 +300,7 @@ export const ParkingSpotDetail: React.FC = () => {
         {/* Back Button */}
         <Link to="/" className="inline-flex items-center space-x-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors">
           <ArrowLeft className="h-5 w-5" />
-          <span>Back to search</span>
+          <span>{t('back_to_search')}</span>
         </Link>
 
         <div className="bg-white rounded-xl shadow-lg overflow-hidden">
@@ -300,7 +323,7 @@ export const ParkingSpotDetail: React.FC = () => {
                         prevImage();
                       }}
                       className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-80 p-2 rounded-full shadow-md hover:bg-opacity-100 transition-all z-10"
-                      aria-label="Previous image"
+                      aria-label={t('previous_image')}
                     >
                       <ChevronLeft className="h-6 w-6 text-gray-700" />
                     </button>
@@ -311,7 +334,7 @@ export const ParkingSpotDetail: React.FC = () => {
                         nextImage();
                       }}
                       className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-80 p-2 rounded-full shadow-md hover:bg-opacity-100 transition-all z-10"
-                      aria-label="Next image"
+                      aria-label={t('next_image')}
                     >
                       <ChevronRight className="h-6 w-6 text-gray-700" />
                     </button>
@@ -327,7 +350,7 @@ export const ParkingSpotDetail: React.FC = () => {
                           className={`w-3 h-3 rounded-full transition-colors ${
                             currentImageIndex === index ? 'bg-white' : 'bg-white bg-opacity-50'
                           }`}
-                          aria-label={`Go to image ${index + 1}`}
+                          aria-label={`${t('go_to_image')} ${index + 1}`}
                         />
                       ))}
                     </div>
@@ -359,7 +382,7 @@ export const ParkingSpotDetail: React.FC = () => {
                   <div className="flex items-center space-x-1">
                     <Star className="h-5 w-5 text-yellow-400 fill-current" />
                     <span className="font-semibold">{spot.rating || '0.0'}</span>
-                    <span className="text-gray-500">({spot.review_count || 0} reviews)</span>
+                    <span className="text-gray-500">({spot.review_count || 0} {t('reviews')})</span>
                   </div>
                 </div>
               </div>
@@ -380,25 +403,25 @@ export const ParkingSpotDetail: React.FC = () => {
               <div className="text-center">
                 <div className="flex items-center justify-center space-x-1 text-sm text-blue-700 mb-2">
                   <Car className="h-5 w-5" />
-                  <span className="font-medium">Availability</span>
+                  <span className="font-medium">{t('availability')}</span>
                 </div>
                 <div className="font-semibold text-blue-900">
-                  {spot.total_slots} {spot.total_slots === 1 ? 'spot' : 'spots'}
+                  {spot.total_slots} {spot.total_slots === 1 ? t('spot') : t('spots')}
                 </div>
               </div>
               <div className="text-center">
                 <div className="flex items-center justify-center space-x-1 text-sm text-blue-700 mb-2">
                   <Calendar className="h-5 w-5" />
-                  <span className="font-medium">Booking Type</span>
+                  <span className="font-medium">{t('booking_type')}</span>
                 </div>
                 <div className="font-semibold text-blue-900 capitalize">
-                  {spot.price_type} rate
+                  {t(`${spot.price_type}_rate`)}
                 </div>
               </div>
               <div className="text-center">
                 <div className="flex items-center justify-center space-x-1 text-sm text-blue-700 mb-2">
                   <Phone className="h-5 w-5" />
-                  <span className="font-medium">Contact</span>
+                  <span className="font-medium">{t('contact')}</span>
                 </div>
                 <div className="font-semibold text-blue-900">
                   {ownerContact}
@@ -410,13 +433,13 @@ export const ParkingSpotDetail: React.FC = () => {
             <div className="mb-8">
               <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
                 <Clock className="h-5 w-5 mr-2" />
-                Opening & Closing Times
+                {t('operating_hours')}
               </h3>
               
               {operatingHours.is24_7 ? (
                 <div className="p-4 bg-green-50 border border-green-100 rounded-lg text-center">
-                  <span className="text-lg font-semibold text-green-800">Open 24/7</span>
-                  <p className="text-sm text-green-700 mt-1">Available all day, every day</p>
+                  <span className="text-lg font-semibold text-green-800">{t('open_24_7')}</span>
+                  <p className="text-sm text-green-700 mt-1">{t('available_all_day')}</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -438,16 +461,16 @@ export const ParkingSpotDetail: React.FC = () => {
                       >
                         <div className="flex justify-between items-center">
                           <span className={`font-medium ${isOpen ? 'text-blue-900' : 'text-gray-500'}`}>
-                            {day}
+                            {t(day.toLowerCase())}
                           </span>
                           {isOpen ? (
                             is24Hours ? (
-                              <span className="text-green-700 font-medium">24 Hours</span>
+                              <span className="text-green-700 font-medium">{t('open_24_hours')}</span>
                             ) : (
                               <span className="text-blue-700">{openTime} - {closeTime}</span>
                             )
                           ) : (
-                            <span className="text-gray-500">Closed</span>
+                            <span className="text-gray-500">{t('closed')}</span>
                           )}
                         </div>
                       </div>
@@ -461,10 +484,10 @@ export const ParkingSpotDetail: React.FC = () => {
             <div className="mb-8">
               <h3 className="text-xl font-semibold text-gray-900 mb-3 flex items-center">
                 <Info className="h-5 w-5 mr-2" />
-                About this parking spot
+                {t('about_parking_spot')}
               </h3>
               <p className="text-gray-700 leading-relaxed">
-                {spot.description || 'No description provided for this parking spot.'}
+                {spot.description || t('no_description_provided')}
               </p>
             </div>
 
@@ -472,13 +495,13 @@ export const ParkingSpotDetail: React.FC = () => {
             {spot.amenities && spot.amenities.length > 0 && (
               <div className="mb-8">
                 <h3 className="text-xl font-semibold text-gray-900 mb-4">
-                  Amenities
+                  {t('amenities')}
                 </h3>
                 <div className="grid md:grid-cols-2 gap-4">
                   {spot.amenities.map((amenity, index) => (
                     <div key={index} className="flex items-center space-x-3 p-4 bg-gray-50 rounded-lg border border-gray-100">
                       {getAmenityIcon(amenity)}
-                      <span className="text-gray-800 font-medium">{amenity}</span>
+                      <span className="text-gray-800 font-medium">{translateAmenity(amenity)}</span>
                     </div>
                   ))}
                 </div>
@@ -489,7 +512,7 @@ export const ParkingSpotDetail: React.FC = () => {
             <div className="mb-8">
               <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
                 <Star className="h-5 w-5 mr-2 text-yellow-500" />
-                Reviews
+                {t('reviews')}
               </h3>
               <div className="space-y-4">
                 {reviews.length > 0 ? (
@@ -516,8 +539,8 @@ export const ParkingSpotDetail: React.FC = () => {
                           <div>
                             <span className="font-semibold text-gray-900">
                               {review.is_anonymous 
-                                ? 'Anonymous User' 
-                                : (review.profiles?.name || review.user_name || 'User')
+                                ? t('anonymous_user')
+                                : (review.profiles?.name || review.user_name || t('user'))
                               }
                             </span>
                             <div className="flex items-center space-x-1">
@@ -535,7 +558,7 @@ export const ParkingSpotDetail: React.FC = () => {
                           </div>
                         </div>
                         <span className="text-sm text-gray-500">
-                          {new Date(review.created_at).toLocaleDateString()}
+                          {new Date(review.created_at).toLocaleDateString(language === 'th' ? 'th-TH' : 'en-US')}
                         </span>
                       </div>
                       {review.comment && <p className="text-gray-700 mb-3">{review.comment}</p>}
@@ -545,7 +568,7 @@ export const ParkingSpotDetail: React.FC = () => {
                             <img
                               key={index}
                               src={photo}
-                              alt={`Review photo ${index + 1}`}
+                              alt={`${t('review_photo')} ${index + 1}`}
                               className="w-20 h-20 object-cover rounded-lg"
                             />
                           ))}
@@ -556,8 +579,8 @@ export const ParkingSpotDetail: React.FC = () => {
                 ) : (
                   <div className="text-center py-8 bg-gray-50 rounded-lg">
                     <Star className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                    <p className="text-gray-600 font-medium">No reviews yet</p>
-                    <p className="text-sm text-gray-500 mt-1">Be the first to review this parking spot</p>
+                    <p className="text-gray-600 font-medium">{t('no_reviews_yet')}</p>
+                    <p className="text-sm text-gray-500 mt-1">{t('be_first_to_review')}</p>
                   </div>
                 )}
               </div>
@@ -569,14 +592,14 @@ export const ParkingSpotDetail: React.FC = () => {
                 onClick={handleBookNow}
                 className="flex-1 bg-blue-600 text-white text-center py-4 px-6 rounded-lg font-semibold hover:bg-blue-700 transition-colors text-lg"
               >
-                Book Now
+                {t('book_now')}
               </button>
               <button 
                 onClick={handleNavigate}
                 className="flex items-center justify-center space-x-2 px-6 py-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors font-semibold"
               >
                 <Navigation className="h-5 w-5" />
-                <span>Navigate</span>
+                <span>{t('get_directions')}</span>
               </button>
               {(spot as any).phone && (
                 <a 
@@ -584,7 +607,7 @@ export const ParkingSpotDetail: React.FC = () => {
                   className="flex items-center justify-center space-x-2 px-6 py-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors font-semibold"
                 >
                   <Phone className="h-5 w-5" />
-                  <span>Call Owner</span>
+                  <span>{t('call_owner')}</span>
                 </a>
               )}
             </div>
@@ -601,7 +624,7 @@ export const ParkingSpotDetail: React.FC = () => {
           <button 
             onClick={toggleFullScreenImage}
             className="absolute top-4 right-4 text-white p-2 hover:bg-gray-800 rounded-full transition-colors z-50"
-            aria-label="Close full screen image"
+            aria-label={t('close_fullscreen_image')}
           >
             <X className="h-8 w-8" />
           </button>
@@ -618,7 +641,7 @@ export const ParkingSpotDetail: React.FC = () => {
                 <button
                   onClick={(e) => prevImage(e)}
                   className="absolute left-4 md:left-8 p-3 bg-black bg-opacity-50 hover:bg-opacity-70 rounded-full text-white transition-colors"
-                  aria-label="Previous image"
+                  aria-label={t('previous_image')}
                 >
                   <ChevronLeft className="h-8 w-8" />
                 </button>
@@ -626,7 +649,7 @@ export const ParkingSpotDetail: React.FC = () => {
                 <button
                   onClick={(e) => nextImage(e)}
                   className="absolute right-4 md:right-8 p-3 bg-black bg-opacity-50 hover:bg-opacity-70 rounded-full text-white transition-colors"
-                  aria-label="Next image"
+                  aria-label={t('next_image')}
                 >
                   <ChevronRight className="h-8 w-8" />
                 </button>
@@ -642,7 +665,7 @@ export const ParkingSpotDetail: React.FC = () => {
                       className={`w-3 h-3 rounded-full transition-colors ${
                         currentImageIndex === index ? 'bg-white' : 'bg-white bg-opacity-50'
                       }`}
-                      aria-label={`Go to image ${index + 1}`}
+                      aria-label={`${t('go_to_image')} ${index + 1}`}
                     />
                   ))}
                 </div>
@@ -663,7 +686,7 @@ export const ParkingSpotDetail: React.FC = () => {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-bold">Scan QR Code</h3>
+              <h3 className="text-xl font-bold">{t('scan_qr_code')}</h3>
               <button 
                 onClick={toggleQRCodeOverlay}
                 className="p-2 hover:bg-gray-100 rounded-full"
@@ -675,11 +698,11 @@ export const ParkingSpotDetail: React.FC = () => {
             <div className="text-center">
               <img 
                 src={(spot as any).qr_code_url || spot.images[0]} 
-                alt="Payment QR Code" 
+                alt={t('payment_qr_code')} 
                 className="max-w-full h-auto mx-auto rounded-lg"
               />
               <p className="mt-4 text-gray-700">
-                Scan this QR code with your banking app to make a payment
+                {t('scan_qr_for_payment')}
               </p>
             </div>
           </div>
