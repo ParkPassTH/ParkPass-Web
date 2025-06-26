@@ -1,6 +1,7 @@
 import React from 'react';
 import { useSlotAvailability } from '../hooks/useSlotAvailability';
 import { SlotAvailabilityErrorBoundary } from './SlotAvailabilityErrorBoundary';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface TimeSlotAvailabilityProps {
   spotId: string;
@@ -23,12 +24,14 @@ export const TimeSlotAvailability: React.FC<TimeSlotAvailabilityProps> = ({
   onClick,
   className = ''
 }) => {
+  const { t } = useLanguage();
+  
   return (
     <SlotAvailabilityErrorBoundary
       fallback={
         <div className="flex flex-col items-center justify-center p-2 bg-gray-50 border border-gray-200 rounded-lg min-h-[64px] cursor-pointer hover:bg-gray-100">
           <div className="text-xs font-medium text-gray-600">{timeSlot}</div>
-          <div className="text-xs text-gray-500">{totalSlots} slots</div>
+          <div className="text-xs text-gray-500">{totalSlots} {t('slots')}</div>
         </div>
       }
     >
@@ -56,6 +59,7 @@ const TimeSlotAvailabilityInner: React.FC<TimeSlotAvailabilityProps> = ({
   onClick,
   className = ''
 }) => {
+  const { t } = useLanguage();
   // Use fallback values if hook fails
   let availableSlots = totalSlots;
   let bookedSlots = 0;
@@ -90,7 +94,7 @@ const TimeSlotAvailabilityInner: React.FC<TimeSlotAvailabilityProps> = ({
   if (!spotId || !date || !timeSlot) {
     return (
       <div className="p-2 rounded-lg border-2 border-gray-300 bg-gray-100 text-center">
-        <div className="text-xs text-gray-500">Invalid slot data</div>
+        <div className="text-xs text-gray-500">{t('invalid_slot_data')}</div>
       </div>
     );
   }
@@ -125,23 +129,6 @@ const TimeSlotAvailabilityInner: React.FC<TimeSlotAvailabilityProps> = ({
     const remainingMinutes = Math.floor(remainingMs / (1000 * 60));
     
     return remainingMinutes >= 30;
-  };
-
-  // Calculate remaining time in slot until END of slot (in minutes)
-  const getRemainingTimeInSlot = () => {
-    const now = new Date();
-    
-    // Parse date and time more reliably
-    const [year, month, day] = date.split('-').map(Number);
-    const [hour, minute] = timeSlot.split(':').map(Number);
-    
-    // Create date in local timezone to avoid timezone issues
-    const slotStartDateTime = new Date(year, month - 1, day, hour, minute, 0);
-    // Calculate end time of the slot (1 hour later)
-    const slotEndDateTime = new Date(slotStartDateTime.getTime() + 60 * 60 * 1000);
-    
-    const remainingMs = slotEndDateTime.getTime() - now.getTime();
-    return Math.max(0, Math.floor(remainingMs / (1000 * 60))); // convert to minutes
   };
 
   // Check if time slot is in the past
@@ -234,7 +221,7 @@ const TimeSlotAvailabilityInner: React.FC<TimeSlotAvailabilityProps> = ({
           <div className="text-xs sm:text-sm">
             <span className="flex items-center space-x-1">
               <div className="w-2 h-2 sm:w-3 sm:h-3 border border-current border-t-transparent rounded-full animate-spin"></div>
-              <span className="hidden sm:inline">Loading...</span>
+              <span className="hidden sm:inline">{t('loading')}</span>
             </span>
           </div>
         </div>
@@ -277,42 +264,42 @@ const TimeSlotAvailabilityInner: React.FC<TimeSlotAvailabilityProps> = ({
             {loading ? (
               <span className="flex items-center space-x-1">
                 <div className="w-2 h-2 sm:w-3 sm:h-3 border border-current border-t-transparent rounded-full animate-spin"></div>
-                <span className="hidden sm:inline">Loading...</span>
+                <span className="hidden sm:inline">{t('loading')}</span>
               </span>
             ) : isPastTime() ? (
-              <span className="font-medium">Past</span>
+              <span className="font-medium">{t('past_time_slot')}</span>
             ) : !hasMinimumTime() ? (
               <div className="space-y-0.5">
-                <span className="font-medium text-xs">Too late</span>
+                <span className="font-medium text-xs">{t('too_late')}</span>
                 <div className="text-xs opacity-75">
-                  &lt;30 min until end
+                  {t('less_than_30_min')}
                 </div>
               </div>
             ) : isBooked ? (
-              <span className="font-medium">Booked</span>
+              <span className="font-medium">{t('booked')}</span>
             ) : (
               <div className="space-y-0.5 sm:space-y-1">
                 <div className="flex justify-between items-center">
                   <span className="font-medium text-xs sm:text-sm">
                     {availableSlots}/{totalSlots}
-                    <span className="hidden sm:inline"> Available</span>
+                    <span className="hidden sm:inline"> {t('available')}</span>
                   </span>
                   {getSlotStatus() === 'limited' && (
                     <span className="text-xs bg-current bg-opacity-20 px-1 sm:px-1.5 py-0.5 rounded">
-                      <span className="hidden sm:inline">Limited</span>
+                      <span className="hidden sm:inline">{t('limited')}</span>
                       <span className="sm:hidden">!</span>
                     </span>
                   )}
                   {getSlotStatus() === 'full' && (
                     <span className="text-xs bg-current bg-opacity-20 px-1 sm:px-1.5 py-0.5 rounded">
-                      <span className="hidden sm:inline">Full</span>
+                      <span className="hidden sm:inline">{t('full')}</span>
                       <span className="sm:hidden">X</span>
                     </span>
                   )}
                 </div>
                 {bookedSlots > 0 && (
                   <div className="text-xs opacity-75 hidden sm:block">
-                    {bookedSlots} booked
+                    {bookedSlots} {t('booked_slots')}
                   </div>
                 )}
               </div>
@@ -325,7 +312,7 @@ const TimeSlotAvailabilityInner: React.FC<TimeSlotAvailabilityProps> = ({
     console.error('TimeSlotAvailability render error:', error);
     return (
       <div className="p-3 rounded-lg border-2 border-red-200 bg-red-50 text-red-700">
-        <div className="text-sm">Error loading slot</div>
+        <div className="text-sm">{t('error_loading_slot')}</div>
       </div>
     );
   }

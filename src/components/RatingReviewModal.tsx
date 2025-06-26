@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Star, X, Send, Camera } from 'lucide-react';
 import { uploadReviewPhoto } from '../utils/reviewPhotoUpload';
 import { supabase } from '../lib/supabase';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface RatingReviewModalProps {
   isOpen: boolean;
@@ -18,6 +19,7 @@ export const RatingReviewModal: React.FC<RatingReviewModalProps> = ({
   bookingId,
   onSubmit
 }) => {
+  const { t } = useLanguage();
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [review, setReview] = useState('');
@@ -36,7 +38,7 @@ export const RatingReviewModal: React.FC<RatingReviewModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (rating === 0) {
-      alert('Please select a rating');
+      alert(t('please_select_rating'));
       return;
     }
 
@@ -71,7 +73,7 @@ export const RatingReviewModal: React.FC<RatingReviewModalProps> = ({
     // Get current user
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      alert('Please login to upload photos');
+      alert(t('please_login_to_upload_photos'));
       return;
     }
 
@@ -88,7 +90,7 @@ export const RatingReviewModal: React.FC<RatingReviewModalProps> = ({
       setPhotos(prev => [...prev, ...validUrls]);
     } catch (error) {
       console.error('Error uploading photos:', error);
-      alert('Failed to upload photos. Please try again.');
+      alert(t('failed_to_upload_photos'));
     } finally {
       setIsSubmitting(false);
     }
@@ -107,11 +109,11 @@ export const RatingReviewModal: React.FC<RatingReviewModalProps> = ({
 
   const ratingLabels = [
     '', // 0 stars
-    'Terrible',
-    'Poor', 
-    'Average',
-    'Good',
-    'Excellent'
+    t('terrible'),
+    t('poor'), 
+    t('average'),
+    t('good'),
+    t('excellent')
   ];
 
   if (!isOpen) return null;
@@ -123,7 +125,7 @@ export const RatingReviewModal: React.FC<RatingReviewModalProps> = ({
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h3 className="text-xl font-bold text-gray-900">Rate & Review</h3>
+              <h3 className="text-xl font-bold text-gray-900">{t('rate_and_review')}</h3>
               <p className="text-sm text-gray-600">{spotName}</p>
             </div>
             <button
@@ -138,7 +140,7 @@ export const RatingReviewModal: React.FC<RatingReviewModalProps> = ({
             {/* Rating Section */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-3">
-                How was your parking experience?
+                {t('how_was_your_parking_experience')}
               </label>
               <div className="flex items-center space-x-2 mb-2">
                 {[1, 2, 3, 4, 5].map((star) => (
@@ -170,19 +172,19 @@ export const RatingReviewModal: React.FC<RatingReviewModalProps> = ({
             {/* Review Text */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Write your review (optional)
+                {t('write_your_review_optional')}
               </label>
               <textarea
                 value={review}
                 onChange={(e) => setReview(e.target.value)}
                 rows={4}
-                placeholder="Share your experience with other drivers. Was the location easy to find? How was the security? Any tips for future visitors?"
+                placeholder={t('review_placeholder')}
                 className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
                 maxLength={500}
               />
               <div className="flex justify-between items-center mt-1">
                 <p className="text-xs text-gray-500">
-                  Help other drivers by sharing specific details
+                  {t('help_other_drivers')}
                 </p>
                 <p className="text-xs text-gray-500">
                   {review.length}/500
@@ -193,14 +195,14 @@ export const RatingReviewModal: React.FC<RatingReviewModalProps> = ({
             {/* Photo Upload */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Add photos (optional)
+                {t('add_photos_optional')}
               </label>
               <div className="grid grid-cols-3 gap-3 mb-3">
                 {photos.map((photo, index) => (
                   <div key={index} className="relative">
                     <img
                       src={photo}
-                      alt={`Review photo ${index + 1}`}
+                      alt={`${t('review_photo')} ${index + 1}`}
                       className="w-full h-20 object-cover rounded-lg"
                     />
                     <button
@@ -223,27 +225,27 @@ export const RatingReviewModal: React.FC<RatingReviewModalProps> = ({
                     />
                     <div className="text-center">
                       <Camera className="h-6 w-6 text-gray-400 mx-auto mb-1" />
-                      <span className="text-xs text-gray-500">Add Photo</span>
+                      <span className="text-xs text-gray-500">{t('add_photo')}</span>
                     </div>
                   </label>
                 )}
               </div>
               <p className="text-xs text-gray-500">
-                Add up to 3 photos to help other drivers
+                {t('add_up_to_3_photos')}
               </p>
             </div>
 
             {/* Review Categories */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-3">
-                Rate specific aspects (optional)
+                {t('rate_specific_aspects_optional')}
               </label>
               <div className="space-y-3">
                 {[
-                  { label: 'Location & Access', key: 'location' },
-                  { label: 'Security & Safety', key: 'security' },
-                  { label: 'Value for Money', key: 'value' },
-                  { label: 'Cleanliness', key: 'cleanliness' }
+                  { label: t('location_access'), key: 'location' },
+                  { label: t('security_safety'), key: 'security' },
+                  { label: t('value_for_money'), key: 'value' },
+                  { label: t('cleanliness'), key: 'cleanliness' }
                 ].map((aspect) => (
                   <div key={aspect.key} className="flex items-center justify-between">
                     <span className="text-sm text-gray-700">{aspect.label}</span>
@@ -280,7 +282,7 @@ export const RatingReviewModal: React.FC<RatingReviewModalProps> = ({
                 className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
               />
               <label htmlFor="anonymous" className="ml-2 text-sm text-gray-700">
-                Post this review anonymously
+                {t('post_review_anonymously')}
               </label>
             </div>
 
@@ -292,7 +294,7 @@ export const RatingReviewModal: React.FC<RatingReviewModalProps> = ({
                 className="flex-1 border border-gray-200 py-3 px-4 rounded-lg font-medium hover:bg-gray-50 transition-colors"
                 disabled={isSubmitting}
               >
-                Cancel
+                {t('cancel')}
               </button>
               <button
                 type="submit"
@@ -302,12 +304,12 @@ export const RatingReviewModal: React.FC<RatingReviewModalProps> = ({
                 {isSubmitting ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    <span>Submitting...</span>
+                    <span>{t('submitting')}</span>
                   </>
                 ) : (
                   <>
                     <Send className="h-4 w-4" />
-                    <span>Submit Review</span>
+                    <span>{t('submit_review')}</span>
                   </>
                 )}
               </button>
@@ -316,12 +318,12 @@ export const RatingReviewModal: React.FC<RatingReviewModalProps> = ({
 
           {/* Review Guidelines */}
           <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-            <h4 className="font-medium text-blue-900 mb-2">Review Guidelines</h4>
+            <h4 className="font-medium text-blue-900 mb-2">{t('review_guidelines')}</h4>
             <ul className="text-xs text-blue-700 space-y-1">
-              <li>• Be honest and helpful to other drivers</li>
-              <li>• Focus on your parking experience</li>
-              <li>• Avoid personal information or offensive content</li>
-              <li>• Photos should be relevant to the parking spot</li>
+              <li>• {t('be_honest_and_helpful')}</li>
+              <li>• {t('focus_on_parking_experience')}</li>
+              <li>• {t('avoid_personal_information')}</li>
+              <li>• {t('photos_should_be_relevant')}</li>
             </ul>
           </div>
         </div>

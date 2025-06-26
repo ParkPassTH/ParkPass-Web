@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { QrCode, Camera, Hash, Check, X, AlertCircle } from 'lucide-react';
 import QrScanner from 'qr-scanner';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface QRScannerProps {
   onScan: (data: string) => void;
@@ -8,6 +9,7 @@ interface QRScannerProps {
 }
 
 export const QRScanner: React.FC<QRScannerProps> = ({ onScan, onClose }) => {
+  const { t } = useLanguage();
   const [scanMode, setScanMode] = useState<'qr' | 'pin'>('qr');
   const [pinInput, setPinInput] = useState('');
   const [isScanning, setIsScanning] = useState(false);
@@ -89,7 +91,7 @@ export const QRScanner: React.FC<QRScannerProps> = ({ onScan, onClose }) => {
       <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">
         <div className="p-6">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-xl font-bold text-gray-900">Entry/Exit Validation</h3>
+            <h3 className="text-xl font-bold text-gray-900">{t('entry_exit_validation')}</h3>
             {onClose && (
               <button
                 onClick={() => {
@@ -152,14 +154,14 @@ export const QRScanner: React.FC<QRScannerProps> = ({ onScan, onClose }) => {
                         onClick={startQRScanner}
                         className="mt-2 text-blue-600 hover:text-blue-800 text-sm font-medium"
                       >
-                        Try Again
+                        {t('try_again')}
                       </button>
                     </div>
                   </div>
                 )}
               </div>
               <p className="text-sm text-gray-600">
-                Position the QR code within the camera view
+                {t('position_qr_code')}
               </p>
             </div>
           ) : (

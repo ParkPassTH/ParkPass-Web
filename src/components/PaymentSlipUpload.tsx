@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Upload, X, Check, AlertCircle, Camera } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface PaymentSlipUploadProps {
   bookingId: string;
@@ -13,6 +14,7 @@ export const PaymentSlipUpload: React.FC<PaymentSlipUploadProps> = ({
   onUploadComplete,
   onClose
 }) => {
+  const { t } = useLanguage();
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -57,7 +59,7 @@ export const PaymentSlipUpload: React.FC<PaymentSlipUploadProps> = ({
       const fileName = `payment-slip-${bookingId}-${Date.now()}.${selectedFile.name.split('.').pop()}`;
       const filePath = `payment-slips/${fileName}`;
       
-      const { data, error: uploadError } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from('payment-slips')
         .upload(filePath, selectedFile);
 
@@ -68,54 +70,10 @@ export const PaymentSlipUpload: React.FC<PaymentSlipUploadProps> = ({
         .from('payment-slips')
         .getPublicUrl(filePath);
 
-      // Save payment slip record
-      const { error: dbError } = await supabase
-        .from('payment_slips')
-        .insert({
-          booking_id: bookingId,
-          image_url: publicUrl,
-          status: 'pending'
-        });
-
-      if (dbError) throw dbError;
-
-      // Update booking payment status
-      const { error: bookingError } = await supabase
-        .from('bookings')
-        .update({ payment_status: 'pending' })
-        .eq('id', bookingId);
-
-      if (bookingError) throw bookingError;
-
+      // Just return the URL to the parent component
+      // The parent will handle creating the booking and payment slip record
       onUploadComplete(publicUrl);
       
-      // Call the verification edge function
-      try {
-        const { data: slipData } = await supabase
-          .from('payment_slips')
-          .select('id')
-          .eq('booking_id', bookingId)
-          .single();
-          
-        if (slipData) {
-          const verifyResponse = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/verify-payment`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
-            },
-            body: JSON.stringify({
-              paymentSlipId: slipData.id,
-              bookingId: bookingId
-            })
-          });
-          
-          console.log('Verification response:', await verifyResponse.json());
-        }
-      } catch (verifyError) {
-        console.error('Error calling verification function:', verifyError);
-        // Don't throw here, we still want to complete the upload process
-      }
     } catch (error) {
       console.error('Upload error:', error);
       setError('Failed to upload payment slip. Please try again.');
@@ -146,7 +104,7 @@ export const PaymentSlipUpload: React.FC<PaymentSlipUploadProps> = ({
       <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">
         <div className="p-6">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-xl font-bold text-gray-900">Upload Payment Slip</h3>
+            <h3 className="text-xl font-bold text-gray-900">{t('upload_payment_slip')}</h3>
             <button
               onClick={onClose}
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -189,12 +147,12 @@ export const PaymentSlipUpload: React.FC<PaymentSlipUploadProps> = ({
                   {uploading ? (
                     <>
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                      <span>Uploading...</span>
+                      <span>{t('uploading')}</span>
                     </>
                   ) : (
                     <>
                       <Check className="h-4 w-4" />
-                      <span>Confirm Upload</span>
+                      <span>{t('confirm_upload')}</span>
                     </>
                   )}
                 </button>
@@ -217,7 +175,7 @@ export const PaymentSlipUpload: React.FC<PaymentSlipUploadProps> = ({
               {uploading ? (
                 <div className="space-y-3">
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-                  <p className="text-gray-600">Uploading payment slip...</p>
+                  <p className="text-gray-600">{t('uploading_payment_slip')}</p>
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -226,10 +184,10 @@ export const PaymentSlipUpload: React.FC<PaymentSlipUploadProps> = ({
                   </div>
                   <div>
                     <p className="text-lg font-medium text-gray-900 mb-2">
-                      Upload Payment Slip
+                      {t('upload_payment_slip')}
                     </p>
                     <p className="text-sm text-gray-600 mb-4">
-                      Drag and drop your payment slip image here, or click to browse
+                      {t('drag_drop_payment_slip')}
                     </p>
                     <input
                       type="file"
@@ -243,11 +201,11 @@ export const PaymentSlipUpload: React.FC<PaymentSlipUploadProps> = ({
                       className="inline-flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors cursor-pointer"
                     >
                       <Camera className="h-4 w-4" />
-                      <span>Choose File</span>
+                      <span>{t('choose_file')}</span>
                     </label>
                   </div>
                   <div className="text-xs text-gray-500">
-                    Supported formats: JPG, PNG, GIF (Max 5MB)
+                    {t('supported_formats')}
                   </div>
                 </div>
               )}
@@ -255,12 +213,12 @@ export const PaymentSlipUpload: React.FC<PaymentSlipUploadProps> = ({
           )}
 
           <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-            <h4 className="font-medium text-blue-900 mb-2">Payment Instructions</h4>
+            <h4 className="font-medium text-blue-900 mb-2">{t('payment_instructions')}</h4>
             <ul className="text-sm text-blue-700 space-y-1">
-              <li>• Take a clear photo of your payment receipt</li>
-              <li>• Ensure all transaction details are visible</li>
-              <li>• Include the booking reference if available</li>
-              <li>• Your booking will be confirmed after verification</li>
+              <li>• {t('take_clear_photo_receipt')}</li>
+              <li>• {t('ensure_transaction_details_visible')}</li>
+              <li>• {t('include_booking_reference_available')}</li>
+              <li>• {t('booking_confirmed_after_verification')}</li>
             </ul>
           </div>
         </div>

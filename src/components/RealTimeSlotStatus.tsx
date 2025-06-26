@@ -1,5 +1,11 @@
 import React from 'react';
-import { useSlotAvailability } from '../hooks/useSlotAvailability';
+imp  const getStatusText = () => {
+    if (loading) return t('checking');
+    if (availableSlots === 0) return 'Full';
+    if (availableSlots <= totalSlots * 0.3) return 'Limited';
+    return 'Available';
+  };useSlotAvailability } from '../hooks/useSlotAvailability';
+import { useLanguage } from '../contexts/LanguageContext';
 import { Car, Clock } from 'lucide-react';
 
 interface RealTimeSlotStatusProps {
@@ -15,6 +21,7 @@ export const RealTimeSlotStatus: React.FC<RealTimeSlotStatusProps> = ({
   size = 'medium',
   showDetails = false
 }) => {
+  const { t } = useLanguage();
   const { availableSlots, bookedSlots, loading } = useSlotAvailability({
     spotId,
     totalSlots
@@ -28,7 +35,7 @@ export const RealTimeSlotStatus: React.FC<RealTimeSlotStatusProps> = ({
   };
 
   const getStatusText = () => {
-    if (loading) return 'Checking...';
+    if (loading) return t('checking');
     if (availableSlots === 0) return 'Full';
     if (availableSlots < Math.ceil(totalSlots / 2)) return 'Limited';
     return 'Available';
@@ -83,6 +90,7 @@ export const TimeSlotStatus: React.FC<TimeSlotStatusProps> = ({
   timeSlot,
   className = ''
 }) => {
+  const { t } = useLanguage();
   const { availableSlots, bookedSlots, loading } = useSlotAvailability({
     spotId,
     totalSlots,
@@ -91,7 +99,7 @@ export const TimeSlotStatus: React.FC<TimeSlotStatusProps> = ({
   });
 
   const getStatusInfo = () => {
-    if (loading) return { color: 'text-gray-500', text: 'Checking...' };
+    if (loading) return { color: 'text-gray-500', text: t('checking') };
     if (availableSlots === 0) return { color: 'text-red-600', text: 'Full' };
     if (availableSlots < Math.ceil(totalSlots / 2)) return { color: 'text-yellow-600', text: 'Limited' };
     return { color: 'text-green-600', text: 'Available' };

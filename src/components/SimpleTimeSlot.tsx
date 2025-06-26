@@ -1,4 +1,5 @@
 import React from 'react';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface SimpleTimeSlotProps {
   timeSlot: string;
@@ -13,6 +14,7 @@ export const SimpleTimeSlot: React.FC<SimpleTimeSlotProps> = ({
   onClick,
   status
 }) => {
+  const { t } = useLanguage();
   const getStatusColor = () => {
     switch (status) {
       case 'loading':
@@ -58,7 +60,7 @@ export const SimpleTimeSlot: React.FC<SimpleTimeSlotProps> = ({
         </div>
         
         <div className="text-xs">
-          {status === 'loading' && 'Loading...'}
+          {status === 'loading' && t('loading')}
           {status === 'past' && 'Past'}
           {status === 'full' && 'Full'}
           {status === 'limited' && 'Limited'}

@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { ParkingSpot } from '../types';
 import { useSlotAvailability } from '../hooks/useSlotAvailability';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface ParkingSpotCardProps {
   spot: ParkingSpot;
@@ -15,6 +16,7 @@ interface ParkingSpotCardProps {
 
 export const ParkingSpotCard: React.FC<ParkingSpotCardProps> = ({ spot }) => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   
   // Use real-time availability hook
   const { availableSlots: realTimeAvailableSlots, loading: availabilityLoading } = useSlotAvailability({
@@ -23,7 +25,8 @@ export const ParkingSpotCard: React.FC<ParkingSpotCardProps> = ({ spot }) => {
   });
 
   const formatPrice = (price: number, type: string) => {
-    return `฿${price}/${type}`;
+    const translatedType = t(`${type}_rate`) || type;
+    return `฿${price}/${translatedType}`;
   };
 
   const handleBookNow = (e: React.MouseEvent) => {
@@ -37,7 +40,7 @@ export const ParkingSpotCard: React.FC<ParkingSpotCardProps> = ({ spot }) => {
   const formatOpeningHours = (hours: any): string => {
     // ถ้าไม่มีข้อมูลเวลาทำการเลย ให้แสดงเริ่มต้น
     if (!hours || hours === null || hours === undefined) {
-      return "Open 24/7"; // Default เป็น 24/7 ถ้าไม่มีข้อมูล
+      return t('open24_7'); // Default เป็น 24/7 ถ้าไม่มีข้อมูล
     }
     
     // ถ้าเป็น string ที่เป็น JSON ให้ parse ก่อน
@@ -48,7 +51,7 @@ export const ParkingSpotCard: React.FC<ParkingSpotCardProps> = ({ spot }) => {
       } catch {
         // ถ้าไม่ใช่ JSON ปกติ (เช่น "24/7") ให้ใช้ logic เดิม
         if (hours.includes('24/7')) {
-          return "Open 24/7";
+          return t('open24_7');
         }
         return hours;
       }
@@ -56,7 +59,7 @@ export const ParkingSpotCard: React.FC<ParkingSpotCardProps> = ({ spot }) => {
   
     // Check if it's 24/7 for ALL days (true 24/7 operation)
     if (hours?.["24_7"] === true) {
-      return "Open 24/7";
+      return t('open24_7');
     }
 
     // Check if ALL 7 days are open 24 hours
@@ -66,7 +69,7 @@ export const ParkingSpotCard: React.FC<ParkingSpotCardProps> = ({ spot }) => {
     );
     
     if (allDays24Hours) {
-      return "Open 24/7";
+      return t('open24_7');
     }
   
     // Get current day name
@@ -92,7 +95,7 @@ export const ParkingSpotCard: React.FC<ParkingSpotCardProps> = ({ spot }) => {
   
     if (dayHours) {
       if (!dayHours.isOpen) {
-        return `${todayEng} Closed`;
+        return `${todayEng} ${t('closed')}`;
       }
       // แสดงเวลาเปิด-ปิดของวันนั้นๆ แม้ว่าจะเปิด 24 ชม.ก็ตาม
       if (dayHours.openTime && dayHours.closeTime) {
@@ -104,7 +107,7 @@ export const ParkingSpotCard: React.FC<ParkingSpotCardProps> = ({ spot }) => {
       }
     }
   
-    return "Check hours";
+    return t('checkHours');
   };
 
   // Helper to get availability status color and text
@@ -115,11 +118,11 @@ export const ParkingSpotCard: React.FC<ParkingSpotCardProps> = ({ spot }) => {
     const availableRatio = realTimeAvailableSlots / totalSlots;
     
     if (realTimeAvailableSlots === 0) {
-      return { color: 'bg-red-100 text-red-700', text: 'Full' };
+      return { color: 'bg-red-100 text-red-700', text: t('status.full') };
     } else if (availableRatio <= 0.3) { // 30% หรือน้อยกว่า
-      return { color: 'bg-yellow-100 text-yellow-700', text: `${realTimeAvailableSlots}/${totalSlots} Available (2hrs)` };
+      return { color: 'bg-yellow-100 text-yellow-700', text: `${realTimeAvailableSlots}/${totalSlots} ${t('status.available_hours')}` };
     } else {
-      return { color: 'bg-green-100 text-green-700', text: `${realTimeAvailableSlots}/${totalSlots} Available (2hrs)` };
+      return { color: 'bg-green-100 text-green-700', text: `${realTimeAvailableSlots}/${totalSlots} ${t('status.available_hours')}` };
     }
   };
 
@@ -129,73 +132,73 @@ export const ParkingSpotCard: React.FC<ParkingSpotCardProps> = ({ spot }) => {
     
     // EV Charging
     if (amenityLower.includes('ev') || amenityLower.includes('electric') || amenityLower.includes('charging')) {
-      return { icon: Zap, text: 'EV Charging', color: 'bg-emerald-50 border-emerald-200 text-emerald-700' };
+      return { icon: Zap, text: t('amenities.evCharging'), color: 'bg-emerald-50 border-emerald-200 text-emerald-700' };
     } 
     // WiFi
     else if (amenityLower.includes('wifi') || amenityLower.includes('wi-fi') || amenityLower.includes('internet')) {
-      return { icon: Wifi, text: 'WiFi', color: 'bg-blue-50 border-blue-200 text-blue-700' };
+      return { icon: Wifi, text: t('amenities.wifi'), color: 'bg-blue-50 border-blue-200 text-blue-700' };
     }
     // Security/CCTV
     else if (amenityLower.includes('security') || amenityLower.includes('cctv') || amenityLower.includes('secure') || amenityLower.includes('camera')) {
-      return { icon: Camera, text: 'CCTV Security', color: 'bg-red-50 border-red-200 text-red-700' };
+      return { icon: Camera, text: t('amenities.cctvSecurity'), color: 'bg-red-50 border-red-200 text-red-700' };
     }
     // Covered Parking
     else if (amenityLower.includes('covered') || amenityLower.includes('shelter') || amenityLower.includes('roof') || amenityLower.includes('indoor')) {
-      return { icon: Umbrella, text: 'Covered', color: 'bg-purple-50 border-purple-200 text-purple-700' };
+      return { icon: Umbrella, text: t('amenities.covered'), color: 'bg-purple-50 border-purple-200 text-purple-700' };
     }
     // Elevator/Lift
     else if (amenityLower.includes('elevator') || amenityLower.includes('lift')) {
-      return { icon: ArrowUpDown, text: 'Elevator', color: 'bg-indigo-50 border-indigo-200 text-indigo-700' };
+      return { icon: ArrowUpDown, text: t('amenities.elevator'), color: 'bg-indigo-50 border-indigo-200 text-indigo-700' };
     }
     // 24/7 Access
     else if (amenityLower.includes('24') || amenityLower.includes('24/7') || amenityLower.includes('access')) {
-      return { icon: Clock, text: '24/7 Access', color: 'bg-orange-50 border-orange-200 text-orange-700' };
+      return { icon: Clock, text: t('amenities.access24_7'), color: 'bg-orange-50 border-orange-200 text-orange-700' };
     }
     // Shopping/Mall
     else if (amenityLower.includes('shopping') || amenityLower.includes('mall') || amenityLower.includes('retail')) {
-      return { icon: ShoppingBag, text: 'Shopping', color: 'bg-pink-50 border-pink-200 text-pink-700' };
+      return { icon: ShoppingBag, text: t('amenities.shopping'), color: 'bg-pink-50 border-pink-200 text-pink-700' };
     }
     // Food Court/Restaurant/Cafe
     else if (amenityLower.includes('food') || amenityLower.includes('court') || amenityLower.includes('restaurant') || amenityLower.includes('cafe') || amenityLower.includes('coffee')) {
       return { icon: amenityLower.includes('cafe') || amenityLower.includes('coffee') ? Coffee : Utensils, 
-               text: amenityLower.includes('cafe') || amenityLower.includes('coffee') ? 'Cafe Nearby' : 'Food Court', 
+               text: amenityLower.includes('cafe') || amenityLower.includes('coffee') ? t('amenities.cafeNearby') : t('amenities.foodCourt'), 
                color: 'bg-amber-50 border-amber-200 text-amber-700' };
     }
     // Valet Service
     else if (amenityLower.includes('valet')) {
-      return { icon: Users, text: 'Valet Service', color: 'bg-cyan-50 border-cyan-200 text-cyan-700' };
+      return { icon: Users, text: t('amenities.valetService'), color: 'bg-cyan-50 border-cyan-200 text-cyan-700' };
     }
     // Car Wash/Cleaning
     else if (amenityLower.includes('wash') || amenityLower.includes('clean') || amenityLower.includes('detailing')) {
-      return { icon: Waves, text: 'Car Wash', color: 'bg-teal-50 border-teal-200 text-teal-700' };
+      return { icon: Waves, text: t('amenities.carWash'), color: 'bg-teal-50 border-teal-200 text-teal-700' };
     }
     // Shuttle/Transport
     else if (amenityLower.includes('shuttle') || amenityLower.includes('transport') || amenityLower.includes('bus')) {
-      return { icon: Plane, text: 'Shuttle', color: 'bg-sky-50 border-sky-200 text-sky-700' };
+      return { icon: Plane, text: t('amenities.shuttle'), color: 'bg-sky-50 border-sky-200 text-sky-700' };
     }
     // Luggage Storage
     else if (amenityLower.includes('luggage') || amenityLower.includes('storage') || amenityLower.includes('bag')) {
-      return { icon: Building, text: 'Storage', color: 'bg-slate-50 border-slate-200 text-slate-700' };
+      return { icon: Building, text: t('amenities.storage'), color: 'bg-slate-50 border-slate-200 text-slate-700' };
     }
     // Toilet/Restroom
     else if (amenityLower.includes('toilet') || amenityLower.includes('restroom') || amenityLower.includes('bathroom')) {
-      return { icon: Bath, text: 'Restroom', color: 'bg-violet-50 border-violet-200 text-violet-700' };
+      return { icon: Bath, text: t('amenities.restroom'), color: 'bg-violet-50 border-violet-200 text-violet-700' };
     }
     // Disabled/Wheelchair Access
     else if (amenityLower.includes('disabled') || amenityLower.includes('wheelchair') || amenityLower.includes('accessible') || amenityLower.includes('handicap')) {
-      return { icon: Shield, text: 'Accessible', color: 'bg-green-50 border-green-200 text-green-700' };
+      return { icon: Shield, text: t('amenities.accessible'), color: 'bg-green-50 border-green-200 text-green-700' };
     }
     // Secure/Lock
     else if (amenityLower.includes('lock') || amenityLower.includes('gate') || amenityLower.includes('barrier')) {
-      return { icon: Lock, text: 'Secure Access', color: 'bg-gray-50 border-gray-200 text-gray-700' };
+      return { icon: Lock, text: t('amenities.secureAccess'), color: 'bg-gray-50 border-gray-200 text-gray-700' };
     }
     // Mobile App/Digital
     else if (amenityLower.includes('app') || amenityLower.includes('mobile') || amenityLower.includes('digital') || amenityLower.includes('smart')) {
-      return { icon: Smartphone, text: 'Smart Parking', color: 'bg-blue-50 border-blue-200 text-blue-700' };
+      return { icon: Smartphone, text: t('amenities.smartParking'), color: 'bg-blue-50 border-blue-200 text-blue-700' };
     }
     // Payment/ATM
     else if (amenityLower.includes('payment') || amenityLower.includes('atm') || amenityLower.includes('card') || amenityLower.includes('cash')) {
-      return { icon: DollarSign, text: 'Payment', color: 'bg-green-50 border-green-200 text-green-700' };
+      return { icon: DollarSign, text: t('amenities.payment'), color: 'bg-green-50 border-green-200 text-green-700' };
     }
     // Default for unknown amenities
     else {
@@ -275,7 +278,7 @@ export const ParkingSpotCard: React.FC<ParkingSpotCardProps> = ({ spot }) => {
               ) : (
                 <div className="flex items-center space-x-1 bg-gray-50 px-2 py-1 rounded-full border border-gray-200">
                   <Car className="h-3.5 w-3.5 text-gray-600" />
-                  <span className="text-xs font-medium text-gray-700">Standard Parking</span>
+                  <span className="text-xs font-medium text-gray-700">{t('amenities.standardParking')}</span>
                 </div>
               )}
             </div>
@@ -292,7 +295,7 @@ export const ParkingSpotCard: React.FC<ParkingSpotCardProps> = ({ spot }) => {
           onClick={handleBookNow}
           className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-blue-700 transition-colors"
         >
-          Book Now
+          {t('bookNow')}
         </button>
       </div>                      
     </div>
