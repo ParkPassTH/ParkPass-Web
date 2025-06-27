@@ -5,7 +5,7 @@ class PushNotificationService {
     this.subscription = null;
     this.vapidPublicKey = null;
     this.serverURL = import.meta.env.VITE_SERVER_URL || 
-                    import.meta.env.VITE_API_URL ||;
+                    import.meta.env.VITE_API_URL;
   }
 
   // Initialize push notifications
