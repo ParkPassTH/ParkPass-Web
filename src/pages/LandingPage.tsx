@@ -17,7 +17,7 @@ export const LandingPage: React.FC = () => {
               <span className="ml-2 text-xl font-bold text-gray-900">ParkPass</span>
             </div>
             <div className="flex items-center space-x-4">
-              <LanguageSwitcher />
+              {/* <LanguageSwitcher /> */}
               <Link
                 to="/login"
                 className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
