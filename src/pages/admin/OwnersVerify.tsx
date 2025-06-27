@@ -11,6 +11,8 @@ export const OwnersVerify: React.FC = () => {
   const [selectedSpot, setSelectedSpot] = useState<any>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
+  // โหลด owners ที่รออนุมัติ
+  const apiBase = import.meta.env.VITE_API_URL;
   // โหลด owner ที่รออนุมัติ
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -40,7 +42,7 @@ export const OwnersVerify: React.FC = () => {
   // อนุมัติ/ปฏิเสธ owner
     const handleVerifyOwner = async (ownerId: string, approved: boolean) => {
       try {
-        const res = await fetch('https://park-pass-server.vercel.app/api/verify-owner', {
+        const res = await fetch('${apiBase}/api/verify-owner', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ownerId, approved }),
@@ -67,7 +69,7 @@ export const OwnersVerify: React.FC = () => {
   // อนุมัติ/ปฏิเสธจุดจอด
   const handleVerifySpot = async (spotId: string, approved: boolean) => {
     try {
-      const res = await fetch('https://park-pass-server.vercel.app/api/verify-spot', {
+      const res = await fetch('${apiBase}/api/verify-spot', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ spotId, approved }),

@@ -36,6 +36,7 @@ export const BookingsPage: React.FC = () => {
   const [incompleteSession, setIncompleteSession] = useState<any>(null);
   const [showIncompleteAlert, setShowIncompleteAlert] = useState(false);
   
+  const apiBase = import.meta.env.VITE_API_URL;
   const { user } = useAuth();
   const { t } = useLanguage();
 
@@ -218,7 +219,7 @@ export const BookingsPage: React.FC = () => {
   };
 
   const updateSpotRating = async (spotId: string) => {
-    await fetch('https://park-pass-server.vercel.app/api/update-spot-rating', {
+    await fetch('$apiBase/api/update-spot-rating', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ spot_id: spotId }),
