@@ -1979,10 +1979,13 @@ export const BookingPage: React.FC = () => {
                                   isBooked={isFullyBooked}
                                   isSelected={isSelected}
                                   onClick={() => toggleDay(daySlot.date)}
-                                  className="min-w-[140px] flex-shrink-0 h-16"
+                                  className="max-w-[90px] flex-shrink-0 h-20"
                                 />
                               );
                             })}
+                          </div>
+                          <div className="text-xs text-gray-500 text-center mt-2">
+                            {t('swipe_for_more_slots')}
                           </div>
                         </div>
 

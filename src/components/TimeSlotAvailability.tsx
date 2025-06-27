@@ -102,6 +102,10 @@ const TimeSlotAvailabilityInner: React.FC<TimeSlotAvailabilityProps> = ({
 
   // Check if time slot has at least 30 minutes remaining until the END of the slot
   const hasMinimumTime = () => {
+    if (bookingType === 'daily' || bookingType === 'monthly') {
+      // สำหรับรายวัน/รายเดือน ไม่ต้องเช็ค 30 นาทีสุดท้าย
+      return true;
+    }
     const now = new Date();
     
     // Parse date and time more reliably
@@ -131,22 +135,25 @@ const TimeSlotAvailabilityInner: React.FC<TimeSlotAvailabilityProps> = ({
   // Check if time slot is in the past
   const isPastTime = () => {
     const now = new Date();
-    
-    // For daily/monthly bookings, check if the date is past today or if today but past noon
     if (bookingType === 'daily' || bookingType === 'monthly') {
-      const today = new Date().toISOString().split('T')[0];
-      const currentHour = now.getHours();
-      
+      // ใช้เวลาประเทศไทย (Asia/Bangkok) สำหรับ today
+      const thailandNow = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Bangkok' }));
+      const yyyy = thailandNow.getFullYear();
+      const mm = (thailandNow.getMonth() + 1).toString().padStart(2, '0');
+      const dd = thailandNow.getDate().toString().padStart(2, '0');
+      const today = `${yyyy}-${mm}-${dd}`;
       // If it's a past date, can't book
       if (date < today) {
         return true;
       }
-      
-      // If it's today, check if it's past noon (12:00)
-      if (date === today && currentHour >= 12) {
-        return true;
+      // ถ้าเป็นวันนี้ ให้เช็คว่าเลย 9 โมงเช้าหรือยัง (เวลาประเทศไทย)
+      if (date === today) {
+        const nineAM = new Date(thailandNow);
+        nineAM.setHours(9, 0, 0, 0);
+        if (thailandNow >= nineAM) {
+          return true;
+        }
       }
-      
       return false;
     }
     
@@ -303,7 +310,7 @@ const TimeSlotAvailabilityInner: React.FC<TimeSlotAvailabilityProps> = ({
               </span>
             ) : isPastTime() ? (
               <span className="font-medium">{t('past_time_slot')}</span>
-            ) : !hasMinimumTime() ? (
+            ) : !hasMinimumTime() && !(bookingType === 'daily' || bookingType === 'monthly') ? (
               <div className="space-y-0.5">
                 <span className="font-medium text-xs">{t('too_late')}</span>
                 <div className="text-xs opacity-75">
