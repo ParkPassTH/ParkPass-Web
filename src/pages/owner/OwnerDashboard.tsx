@@ -5,6 +5,7 @@ import {
   QrCode, 
   MapPin, 
   Calendar, 
+  CalendarDays,
   Star, 
   DollarSign,
   Plus,
@@ -268,6 +269,10 @@ export const OwnerDashboard: React.FC = () => {
   const [verificationError, setVerificationError] = useState<string | null>(null);
   const [showFullImage, setShowFullImage] = useState(false);
 
+  // Booking detail modal state
+  const [showBookingDetailModal, setShowBookingDetailModal] = useState(false);
+  const [selectedBooking, setSelectedBooking] = useState<any>(null);
+
   // Payment methods state
   const [paymentMethods, setPaymentMethods] = useState({
     qr_code: {
@@ -500,13 +505,13 @@ export const OwnerDashboard: React.FC = () => {
     if (file) {
       // Validate file type
       if (!file.type.startsWith('image/')) {
-        alert('Please select an image file');
+        alert(t('please_select_image_file'));
         return;
       }
       
       // Validate file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
-        alert('File size must be less than 5MB');
+        alert(t('file_size_limit_5mb'));
         return;
       }
 
@@ -568,7 +573,7 @@ export const OwnerDashboard: React.FC = () => {
 
   const handlePaymentMethodSave = async (method: 'qr_code' | 'bank_transfer') => {
     if (!profile?.id) {
-      alert('User profile not found');
+      alert(t('user_profile_not_found'));
       return;
     }
 
@@ -633,7 +638,7 @@ export const OwnerDashboard: React.FC = () => {
       setQrImagePreview('');
     } catch (err: any) {
       console.error('Error saving payment method:', err);
-      alert(`Failed to save payment method: ${err.message}`);
+      alert(`${t('failed_save_payment_method')}: ${err.message}`);
     } finally {
       setPaymentLoading(false);
     } 
@@ -684,10 +689,23 @@ export const OwnerDashboard: React.FC = () => {
     new Date(booking.created_at).toDateString() === new Date().toDateString()
   ).slice(0, 3);
 
+  // Function to get booking status color (same as in BookingsPage)
+  const getBookingStatusColor = (status: string) => {
+    switch (status) {
+      case 'active': return 'bg-green-100 text-green-800';
+      case 'confirmed': return 'bg-blue-100 text-blue-800';
+      case 'pending': return 'bg-yellow-100 text-yellow-800';
+      case 'completed': return 'bg-gray-100 text-gray-800';
+      case 'cancelled': return 'bg-red-100 text-red-800';
+      case 'expired': return 'bg-orange-100 text-orange-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
   const handleQRScan = async (data: string) => {
     setScanResult(data);
     setScanStatus('processing');
-    setScanMessage('Processing scan...');
+    setScanMessage(t('processing_scan'));
     try {
       const isPin = /^\d{4}$/.test(data);
       
@@ -749,7 +767,7 @@ export const OwnerDashboard: React.FC = () => {
         
       if (!spotData) {
         setScanStatus('error');
-        setScanMessage('This booking is not for one of your parking spots.');
+        setScanMessage(t('booking_not_for_your_spot'));
         return;
       }
       
@@ -781,7 +799,7 @@ export const OwnerDashboard: React.FC = () => {
           .eq('id', spotData.id);
   
         setScanStatus('success');
-        setScanMessage('Entry confirmed! Booking is now active.');
+        setScanMessage(t('entry_confirmed_booking_active'));
       } else if (bookingData.status === 'active') {
         // เปลี่ยนเป็น completed (ออก)
         const { error: updateError } = await supabase
@@ -803,14 +821,14 @@ export const OwnerDashboard: React.FC = () => {
           .eq('id', spotData.id);
   
         setScanStatus('success');
-        setScanMessage('Exit confirmed! Booking is now completed.');
+        setScanMessage(t('exit_confirmed_booking_completed'));
       } else if (bookingData.status === 'completed') {
         setScanStatus('success');
         setScanMessage(t('qr_pin_verified_completed'));
       } else if (bookingData.status === 'cancelled') {
         // แสดงสถานะยกเลิกแต่ยังทำการยืนยันได้
         setScanStatus('success');
-        setScanMessage(`การจอง #${bookingData.id.slice(-6)} ถูกยกเลิกไปแล้ว - QR/PIN ยืนยันสำเร็จ`);
+        setScanMessage(t('booking_cancelled_qr_verified', { id: bookingData.id.slice(-6) }));
       } else {
         setScanStatus('success');
         setScanMessage(`${t('qr_pin_verified_status')}: ${bookingData.status.toUpperCase()}`);
@@ -825,7 +843,7 @@ export const OwnerDashboard: React.FC = () => {
       }, 2000);
     } catch (err: any) {
       setScanStatus('error');
-      setScanMessage(`Error: ${err.message || 'Failed to process scan'}`);
+      setScanMessage(t('scan_error_message', { error: err.message || t('failed_process_scan') }));
     }
   };
 
@@ -877,13 +895,24 @@ export const OwnerDashboard: React.FC = () => {
       setSelectedPayment(null);
       
       // Show success message
-      alert(`Payment ${approved ? 'approved' : 'rejected'} successfully!`);
+      alert(t(approved ? 'payment_approved_success' : 'payment_rejected_success'));
     } catch (error: any) {
       console.error('Error verifying payment:', error);
       setVerificationError(error.message || 'Failed to process payment verification');
     } finally {
       setVerificationLoading(false);
     }
+  };
+
+  // Booking detail functions
+  const openBookingDetailModal = (booking: any) => {
+    setSelectedBooking(booking);
+    setShowBookingDetailModal(true);
+  };
+
+  const closeBookingDetailModal = () => {
+    setSelectedBooking(null);
+    setShowBookingDetailModal(false);
   };
 
   const HomeSection = () => (
@@ -938,7 +967,7 @@ export const OwnerDashboard: React.FC = () => {
       <div className="bg-white rounded-xl shadow-md p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-gray-900">{t('todays_bookings')}</h3>
-          <span className="text-sm text-gray-500">{new Date().toLocaleDateString()}</span>
+          <span className="text-sm text-gray-500">{new Date().toLocaleDateString('en-GB')}</span>
         </div>
         
         <div className="space-y-3">
@@ -946,11 +975,19 @@ export const OwnerDashboard: React.FC = () => {
             todayBookings.map((booking) => (
               <div key={booking.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-900">
-                    {t('booking_hash', { id: booking.id.slice(-6), status: booking.status })}
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-sm font-medium text-gray-900">
+                      {t('booking_id')}: #{booking.id.slice(-6)}
+                    </p>
+                    <div className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${getBookingStatusColor(booking.status)}`}>
+                      {t(booking.status)}
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-500 mb-1">
+                    {booking.parking_spots?.name || t('unknown_spot')} - ฿{booking.total_cost}
                   </p>
                   <p className="text-xs text-gray-500">
-                    {new Date(booking.created_at).toLocaleString()}
+                    {new Date(booking.start_time).toLocaleString('en-GB', { hour12: false })} - {new Date(booking.end_time).toLocaleTimeString('en-GB', { hour12: false })}
                   </p>
                 </div>
               </div>
@@ -1049,7 +1086,7 @@ export const OwnerDashboard: React.FC = () => {
                   Booking #{booking.id.slice(-6)} - {booking.status}
                 </p>
                 <p className="text-xs text-gray-500">
-                  {new Date(booking.created_at).toLocaleString()}
+                  {new Date(booking.created_at).toLocaleString('en-GB', { hour12: false })}
                 </p>
               </div>
             </div>
@@ -1084,22 +1121,39 @@ export const OwnerDashboard: React.FC = () => {
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                         !spot.is_approved
                           ? 'bg-yellow-100 text-yellow-800'
-                          : spot.is_active
+                          : spot.is_approved
                             ? 'bg-green-100 text-green-800'
                             : 'bg-gray-100 text-gray-800'
                       }`}>
                         {!spot.is_approved
                           ? t('pending_approval')
-                          : spot.is_active
+                          : spot.is_approved
                             ? t('active')
                             : t('inactive')}
                       </span>
                     </div>
                     <p className="text-sm text-gray-600 mb-1">{spot.address}</p>
-                    <div className="flex items-center space-x-4 text-sm text-gray-600">
-                      <span>{t('available_slots', { available: spot.available_slots, total: spot.total_slots })}</span>
+                    <div className="flex flex-wrap items-center gap-2 text-sm text-gray-600 mb-2">
+                      <span>{t('total_parking_slots', { total: spot.total_slots })}</span>
                       <span>•</span>
-                      <span>${spot.price}/{spot.price_type}</span>
+                      <span>${spot.pricing?.hour?.price || spot.price}/{spot.pricing?.hour?.enabled ? 'hour' : spot.price_type}</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {spot.pricing?.hour?.enabled && (
+                        <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
+                          Hourly
+                        </span>
+                      )}
+                      {spot.pricing?.day?.enabled && (
+                        <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
+                          Daily
+                        </span>
+                      )}
+                      {spot.pricing?.month?.enabled && (
+                        <span className="px-2 py-1 bg-purple-100 text-purple-800 rounded-full text-xs font-medium">
+                          Monthly
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center space-x-2">
@@ -1109,16 +1163,17 @@ export const OwnerDashboard: React.FC = () => {
                     <Link
                       to={`/owner/edit-spot/${spot.id}`}
                       className="p-2 text-gray-600 hover:text-blue-600 transition-colors"
+                      title={t('edit_parking_spot')}
                     >
                       <Edit className="h-4 w-4" />
                     </Link>
-                    {/* <Link
+                    <Link
                       to={`/owner/availability/${spot.id}`}
                       className="p-2 text-gray-600 hover:text-purple-600 transition-colors"
                       title={t('manage_availability')}
                     >
                       <CalendarDays className="h-4 w-4" />
-                    </Link> */}
+                    </Link>
                     {/* <button className="p-2 text-gray-600 hover:text-blue-600 transition-colors">
                       {spot.is_active ? <ToggleRight className="h-5 w-5" /> : <ToggleLeft className="h-5 w-5" />}
                     </button> */}
@@ -1189,9 +1244,10 @@ export const OwnerDashboard: React.FC = () => {
                 <th className="text-left py-2 px-2 font-semibold text-gray-900">{t('table_id')}</th>
                 <th className="text-left py-2 px-2 font-semibold text-gray-900">{t('table_date')}</th>
                 <th className="text-left py-2 px-2 font-semibold text-gray-900">{t('table_customer')}</th>
+                <th className="hidden md:table-cell text-left py-2 px-2 font-semibold text-gray-900">Type</th>
                 <th className="text-left py-2 px-2 font-semibold text-gray-900">{t('table_status')}</th>
                 <th className="hidden sm:table-cell text-left py-2 px-2 font-semibold text-gray-900">{t('table_amount')}</th>
-                {/* <th className="hidden sm:table-cell text-left py-2 px-2 font-semibold text-gray-900">Actions</th> */}
+                <th className="text-left py-2 px-2 font-semibold text-gray-900">{t('view_details')}</th>
               </tr>
             </thead>
             <tbody>
@@ -1199,9 +1255,9 @@ export const OwnerDashboard: React.FC = () => {
                 <tr key={booking.id} className="border-b border-gray-100 hover:bg-gray-50">
                   <td className="py-2 px-2 font-mono">#{booking.id.slice(-6)}</td>
                   <td className="py-2 px-2 text-gray-600">
-                    <div>{new Date(booking.start_time).toLocaleDateString()}</div>
+                    <div>{new Date(booking.start_time).toLocaleDateString('en-GB')}</div>
                     <div className="text-xs text-gray-500">
-                      {new Date(booking.start_time).toLocaleTimeString()} - {new Date(booking.end_time).toLocaleTimeString()}
+                      {new Date(booking.start_time).toLocaleTimeString('en-GB', { hour12: false })} - {new Date(booking.end_time).toLocaleTimeString('en-GB', { hour12: false })}
                     </div>
                   </td>
                   <td className="py-2 px-2">
@@ -1212,6 +1268,16 @@ export const OwnerDashboard: React.FC = () => {
                           ? booking.user_id.slice(0, 8) + '...'
                           : '-'}
                     </div>
+                  </td>
+                  <td className="hidden md:table-cell py-2 px-2">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${
+                      booking.booking_type === 'hourly' ? 'bg-blue-100 text-blue-800' :
+                      booking.booking_type === 'daily' ? 'bg-green-100 text-green-800' :
+                      booking.booking_type === 'monthly' ? 'bg-purple-100 text-purple-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {booking.booking_type || 'hourly'}
+                    </span>
                   </td>
                   <td className="py-2 px-2">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${
@@ -1228,11 +1294,15 @@ export const OwnerDashboard: React.FC = () => {
                     </div>
                   </td>
                   <td className="hidden sm:table-cell py-2 px-2 font-semibold text-gray-900">${booking.total_cost}</td>
-                  <td className="hidden sm:table-cell py-2 px-2">
+                  <td className="py-2 px-2">
                     <div className="flex items-center space-x-1">
-                      {/* <button className="p-1 hover:bg-gray-200 rounded transition-colors">
-                        <Eye className="h-4 w-4 text-gray-500" />
-                      </button> */}
+                      <button 
+                        onClick={() => openBookingDetailModal(booking)}
+                        className="p-1 hover:bg-blue-100 rounded transition-colors"
+                        title={t('view_details')}
+                      >
+                        <Eye className="h-4 w-4 text-blue-500" />
+                      </button>
                       {booking.status === 'active' && (
                         <button className="p-1 hover:bg-red-100 rounded transition-colors">
                           <AlertTriangle className="h-4 w-4 text-red-500" />
@@ -1244,7 +1314,7 @@ export const OwnerDashboard: React.FC = () => {
               ))}
               {filteredBookings.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="py-6 text-center text-gray-400">
+                  <td colSpan={7} className="py-6 text-center text-gray-400">
                     {t('no_bookings_found')}
                   </td>
                 </tr>
@@ -1299,7 +1369,7 @@ export const OwnerDashboard: React.FC = () => {
                       </span>
                     </div>
                     <p className="text-sm text-gray-600 mb-1">
-                      {new Date(review.created_at).toLocaleDateString()}
+                      {new Date(review.created_at).toLocaleDateString('en-GB')}
                     </p>
                   </div>
                 </div>
@@ -1578,7 +1648,7 @@ export const OwnerDashboard: React.FC = () => {
                       <div className="flex items-center space-x-2 text-sm">
                         <span className="text-blue-600 font-medium">${payment.booking?.total_cost || 0}</span>
                         <span className="text-gray-500">•</span>
-                        <span className="text-gray-600">{new Date(payment.created_at).toLocaleString()}</span>
+                        <span className="text-gray-600">{new Date(payment.created_at).toLocaleString('en-GB', { hour12: false })}</span>
                       </div>
                     </div>
                   </div>
@@ -1826,8 +1896,27 @@ export const OwnerDashboard: React.FC = () => {
                         <div className="pt-3 border-t border-gray-200">
                           <p className="text-sm text-gray-600">Booking Time</p>
                           <p className="font-medium text-gray-900">
-                            {new Date(selectedPayment.booking?.start_time).toLocaleDateString()} {new Date(selectedPayment.booking?.start_time).toLocaleTimeString()} - {new Date(selectedPayment.booking?.end_time).toLocaleTimeString()}
+                            {new Date(selectedPayment.booking?.start_time).toLocaleDateString()} {new Date(selectedPayment.booking?.start_time).toLocaleTimeString('en-GB', { hour12: false })} - {new Date(selectedPayment.booking?.end_time).toLocaleTimeString('en-GB', { hour12: false })}
                           </p>
+                        </div>
+                        
+                        <div className="pt-3 border-t border-gray-200">
+                          <p className="text-sm text-gray-600">Booking Type</p>
+                          <div className="flex items-center space-x-2">
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${
+                              selectedPayment.booking?.booking_type === 'hourly' ? 'bg-blue-100 text-blue-800' :
+                              selectedPayment.booking?.booking_type === 'daily' ? 'bg-green-100 text-green-800' :
+                              selectedPayment.booking?.booking_type === 'monthly' ? 'bg-purple-100 text-purple-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {selectedPayment.booking?.booking_type || 'hourly'} booking
+                            </span>
+                            <span className="text-sm text-gray-600">
+                              {selectedPayment.booking?.booking_type === 'hourly' ? 'Flexible time slots' :
+                               selectedPayment.booking?.booking_type === 'daily' ? '24-hour access' :
+                               selectedPayment.booking?.booking_type === 'monthly' ? 'Long-term parking' : 'Standard booking'}
+                            </span>
+                          </div>
                         </div>
                         
                         <div className="pt-3 border-t border-gray-200">
@@ -1844,7 +1933,7 @@ export const OwnerDashboard: React.FC = () => {
                               Pending Verification
                             </span>
                             <span className="text-sm text-gray-600">
-                              Uploaded {new Date(selectedPayment.created_at).toLocaleString()}
+                              Uploaded {new Date(selectedPayment.created_at).toLocaleString('en-GB', { hour12: false })}
                             </span>
                           </div>
                         </div>
@@ -1905,6 +1994,219 @@ export const OwnerDashboard: React.FC = () => {
                     </div>
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Booking Detail Modal */}
+        {showBookingDetailModal && selectedBooking && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              {/* Modal Header */}
+              <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                <h2 className="text-xl font-bold text-gray-900">
+                  {t('booking_details')}
+                </h2>
+                <button
+                  onClick={closeBookingDetailModal}
+                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                >
+                  <X className="h-5 w-5 text-gray-500" />
+                </button>
+              </div>
+
+              {/* Modal Content */}
+              <div className="p-6 space-y-6">
+                {/* Booking ID and Status */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      {t('booking_id')}: #{selectedBooking.id.slice(-8)}
+                    </h3>
+                    <p className="text-sm text-gray-600">
+                      {t('created_at')}: {new Date(selectedBooking.created_at).toLocaleDateString('en-GB')} {new Date(selectedBooking.created_at).toLocaleTimeString('en-GB', { hour12: false })}
+                    </p>
+                  </div>
+                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${getBookingStatusColor(selectedBooking.status)}`}>
+                    {t(`status_${selectedBooking.status}`)}
+                  </span>
+                </div>
+
+                {/* Customer Information */}
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h4 className="font-medium text-gray-900 mb-3">{t('customer_information')}</h4>
+                  <div className="grid grid-cols-1 gap-4">
+                    <div>
+                      <label className="text-sm text-gray-600">{t('customer_name')}</label>
+                      <p className="font-medium text-gray-900">
+                        {selectedBooking.profiles?.name || t('not_available')}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Parking Information */}
+                <div className="bg-blue-50 rounded-lg p-4">
+                  <h4 className="font-medium text-gray-900 mb-3">{t('parking_information')}</h4>
+                  <div className="grid grid-cols-1 gap-4">
+                    <div>
+                      <label className="text-sm text-gray-600">{t('parking_spot')}</label>
+                      <p className="font-medium text-gray-900">
+                        {selectedBooking.parking_spots?.name || t('not_available')}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600">{t('address')}</label>
+                      <p className="font-medium text-gray-900">
+                        {selectedBooking.parking_spots?.address || t('not_available')}
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-sm text-gray-600">{t('start_time')}</label>
+                        <p className="font-medium text-gray-900">
+                          {new Date(selectedBooking.start_time).toLocaleDateString('en-GB')} {new Date(selectedBooking.start_time).toLocaleTimeString('en-GB', { hour12: false })}
+                        </p>
+                      </div>
+                      <div>
+                        <label className="text-sm text-gray-600">{t('end_time')}</label>
+                        <p className="font-medium text-gray-900">
+                          {new Date(selectedBooking.end_time).toLocaleDateString('en-GB')} {new Date(selectedBooking.end_time).toLocaleTimeString('en-GB', { hour12: false })}
+                        </p>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600">{t('duration')}</label>
+                      <p className="font-medium text-gray-900">
+                        {Math.ceil((new Date(selectedBooking.end_time).getTime() - new Date(selectedBooking.start_time).getTime()) / (1000 * 60 * 60))} {t('hours')}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600">Booking Type</label>
+                      <div className="flex items-center space-x-2">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${
+                          selectedBooking.booking_type === 'hourly' ? 'bg-blue-100 text-blue-800' :
+                          selectedBooking.booking_type === 'daily' ? 'bg-green-100 text-green-800' :
+                          selectedBooking.booking_type === 'monthly' ? 'bg-purple-100 text-purple-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {selectedBooking.booking_type || 'hourly'} booking
+                        </span>
+                        <span className="text-sm text-gray-600">
+                          {selectedBooking.booking_type === 'hourly' ? 'Flexible time slots' :
+                           selectedBooking.booking_type === 'daily' ? '24-hour access' :
+                           selectedBooking.booking_type === 'monthly' ? 'Long-term parking' : 'Standard booking'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Payment Information */}
+                <div className="bg-green-50 rounded-lg p-4">
+                  <h4 className="font-medium text-gray-900 mb-3">{t('payment_information')}</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm text-gray-600">{t('total_amount')}</label>
+                      <p className="text-xl font-bold text-green-600">
+                        ${selectedBooking.total_cost}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600">{t('payment_status')}</label>
+                      <p className={`font-medium ${
+                        selectedBooking.payment_status === 'paid' ? 'text-green-600' :
+                        selectedBooking.payment_status === 'pending' ? 'text-yellow-600' :
+                        'text-red-600'
+                      }`}>
+                        {t(`payment_${selectedBooking.payment_status}`)}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600">{t('payment_method')}</label>
+                      <p className="font-medium text-gray-900">
+                        {selectedBooking.payment_method ? t(`payment_method_${selectedBooking.payment_method}`) : t('not_specified')}
+                      </p>
+                    </div>
+                    {selectedBooking.payment_verified_at && (
+                      <div>
+                        <label className="text-sm text-gray-600">{t('payment_verified_at')}</label>
+                        <p className="font-medium text-gray-900">
+                          {new Date(selectedBooking.payment_verified_at).toLocaleDateString('en-GB')} {new Date(selectedBooking.payment_verified_at).toLocaleTimeString('en-GB', { hour12: false })}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Additional Information */}
+                {(selectedBooking.special_requests || selectedBooking.notes) && (
+                  <div className="bg-yellow-50 rounded-lg p-4">
+                    <h4 className="font-medium text-gray-900 mb-3">{t('additional_information')}</h4>
+                    {selectedBooking.special_requests && (
+                      <div className="mb-3">
+                        <label className="text-sm text-gray-600">{t('special_requests')}</label>
+                        <p className="font-medium text-gray-900">
+                          {selectedBooking.special_requests}
+                        </p>
+                      </div>
+                    )}
+                    {selectedBooking.notes && (
+                      <div>
+                        <label className="text-sm text-gray-600">{t('notes')}</label>
+                        <p className="font-medium text-gray-900">
+                          {selectedBooking.notes}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Entry/Exit Information */}
+                {(selectedBooking.entry_time || selectedBooking.exit_time) && (
+                  <div className="bg-purple-50 rounded-lg p-4">
+                    <h4 className="font-medium text-gray-900 mb-3">{t('entry_exit_information')}</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {selectedBooking.entry_time && (
+                        <div>
+                          <label className="text-sm text-gray-600">{t('actual_entry_time')}</label>
+                          <p className="font-medium text-gray-900">
+                            {new Date(selectedBooking.entry_time).toLocaleDateString()} {new Date(selectedBooking.entry_time).toLocaleTimeString('en-GB', { hour12: false })}
+                          </p>
+                        </div>
+                      )}
+                      {selectedBooking.exit_time && (
+                        <div>
+                          <label className="text-sm text-gray-600">{t('actual_exit_time')}</label>
+                          <p className="font-medium text-gray-900">
+                            {new Date(selectedBooking.exit_time).toLocaleDateString()} {new Date(selectedBooking.exit_time).toLocaleTimeString('en-GB', { hour12: false })}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="flex justify-end space-x-3 p-6 border-t border-gray-200">
+                {selectedBooking.status === 'pending' && (
+                  <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                    {t('confirm_booking')}
+                  </button>
+                )}
+                {selectedBooking.status === 'active' && !selectedBooking.exit_time && (
+                  <button className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+                    {t('mark_as_exited')}
+                  </button>
+                )}
+                <button
+                  onClick={closeBookingDetailModal}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  {t('close')}
+                </button>
               </div>
             </div>
           </div>

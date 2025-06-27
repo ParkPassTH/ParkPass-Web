@@ -4,14 +4,21 @@ import {
   ArrowLeft, 
   DollarSign, 
   Camera, 
-  Plus, 
   X,
   Save,
-  Trash2
+  Trash2,
+  Upload,
+  Zap,
+  Shield,
+  Umbrella,
+  Wifi,
+  Coffee,
+  Wrench
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { OpeningHours } from '../../components/OpeningHours';
 import { MapPicker } from '../../components/MapPicker';
+import { Checkbox } from '../../components/ui/checkbox';
 import { ParkingSpot } from '../../lib/supabase';
 import { useLanguage } from '../../contexts/LanguageContext';
 
@@ -33,20 +40,23 @@ export const EditParkingSpot: React.FC = () => {
     description: '',
     address: '',
     total_slots: 1,
-    price_type: 'hour',
-    price: 0,
+    pricing: {
+      hour: { enabled: false, price: 0 },
+      day: { enabled: false, price: 0 },
+      month: { enabled: false, price: 0 }
+    },
     amenities: [],
     images: [],
     is_active: true,
   });
 
   const availableAmenities = [
-    { id: 'ev-charging', name: t('ev_charging') },
-    { id: 'cctv', name: t('security_camera') },
-    { id: 'covered', name: t('covered_parking') },
-    { id: 'wifi', name: t('wifi') },
-    { id: 'cafe', name: t('cafe_nearby') },
-    { id: 'maintenance', name: t('car_maintenance') },
+    { id: 'ev-charging', nameKey: 'amenity_ev_charging', icon: Zap },
+    { id: 'cctv', nameKey: 'amenity_cctv', icon: Shield },
+    { id: 'covered', nameKey: 'amenity_covered', icon: Umbrella },
+    { id: 'wifi', nameKey: 'amenity_wifi', icon: Wifi },
+    { id: 'cafe', nameKey: 'amenity_cafe', icon: Coffee },
+    { id: 'maintenance', nameKey: 'amenity_maintenance', icon: Wrench },
   ];
 
   useEffect(() => {
@@ -64,13 +74,30 @@ export const EditParkingSpot: React.FC = () => {
         if (error) throw error;
         
         if (data) {
+          // แปลง pricing format เก่าเป็นใหม่ถ้าจำเป็น
+          let pricingData = {
+            hour: { enabled: false, price: 0 },
+            day: { enabled: false, price: 0 },
+            month: { enabled: false, price: 0 }
+          };
+
+          if (data.pricing && typeof data.pricing === 'object') {
+            // ถ้าเป็น format ใหม่แล้ว
+            pricingData = data.pricing;
+          } else if (data.price && data.price_type) {
+            // แปลงจาก format เก่า
+            pricingData[data.price_type as 'hour' | 'day' | 'month'] = {
+              enabled: true,
+              price: data.price
+            };
+          }
+
           setFormData({
             name: data.name,
             description: data.description || '',
             address: data.address,
             total_slots: data.total_slots,
-            price_type: data.price_type,
-            price: data.price,
+            pricing: pricingData,
             amenities: data.amenities || [],
             images: data.images || [],
             is_active: data.is_active,
@@ -113,11 +140,12 @@ export const EditParkingSpot: React.FC = () => {
     const amenity = availableAmenities.find(a => a.id === amenityId);
     if (!amenity) return;
     
+    const amenityName = t(amenity.nameKey);
     setFormData(prev => ({
       ...prev,
-      amenities: prev.amenities?.includes(amenity.name)
-        ? prev.amenities.filter(a => a !== amenity.name)
-        : [...(prev.amenities || []), amenity.name]
+      amenities: prev.amenities?.includes(amenityName)
+        ? prev.amenities.filter(a => a !== amenityName)
+        : [...(prev.amenities || []), amenityName]
     }));
   };
 
@@ -138,7 +166,7 @@ export const EditParkingSpot: React.FC = () => {
     // Limit to 4 images total
     const remainingSlots = 4 - imageFiles.length - (formData.images?.length || 0);
     if (remainingSlots <= 0) {
-      alert(t('maximum_4_images_allowed'));
+      alert(t('spot_max_images_alert'));
       return;
     }
     
@@ -147,11 +175,11 @@ export const EditParkingSpot: React.FC = () => {
     // Validate file types and sizes
     const validFiles = newFiles.filter(file => {
       if (!file.type.startsWith('image/')) {
-        alert(`${file.name} ${t('file_not_image')}`);
+        alert(t('spot_file_not_image_alert', { fileName: file.name }));
         return false;
       }
       if (file.size > 5 * 1024 * 1024) {
-        alert(`${file.name} ${t('file_exceeds_5mb_limit')}`);
+        alert(t('spot_file_size_exceeded_alert', { fileName: file.name }));
         return false;
       }
       return true;
@@ -219,16 +247,25 @@ export const EditParkingSpot: React.FC = () => {
     setSaving(true);
     setError(null);
 
-    // Validate required fields
-    if (!formData.name || !formData.address || !formData.price || formData.price <= 0) {
-      setError(t('please_fill_required_fields'));
+    // Validate required fields - check if at least one pricing option is enabled
+    const enabledPricing = formData.pricing ? Object.values(formData.pricing).filter(p => p.enabled) : [];
+    if (!formData.name || !formData.address || enabledPricing.length === 0) {
+      setError(t('spot_required_fields_error'));
+      setSaving(false);
+      return;
+    }
+
+    // Validate that enabled pricing options have valid prices
+    const invalidPricing = enabledPricing.some(p => p.price <= 0);
+    if (invalidPricing) {
+      setError(t('spot_valid_prices_error'));
       setSaving(false);
       return;
     }
 
     // Validate images (at least 1 required)
     if ((formData.images?.length === 0 || !formData.images) && imageFiles.length === 0) {
-      setError(t('please_add_at_least_one_image'));
+      setError(t('spot_one_image_required_error'));
       setSaving(false);
       return;
     }
@@ -246,8 +283,13 @@ export const EditParkingSpot: React.FC = () => {
         latitude: coordinates.lat,
         longitude: coordinates.lng,
         total_slots: formData.total_slots,
-        price: formData.price,
-        price_type: formData.price_type,
+        price: formData.pricing?.hour?.enabled ? formData.pricing.hour.price : 
+               formData.pricing?.day?.enabled ? formData.pricing.day.price :
+               formData.pricing?.month?.enabled ? formData.pricing.month.price : 0,
+        price_type: formData.pricing?.hour?.enabled ? 'hour' : 
+                   formData.pricing?.day?.enabled ? 'day' :
+                   formData.pricing?.month?.enabled ? 'month' : 'hour',
+        pricing: formData.pricing, // Store all pricing options in new column
         amenities: formData.amenities,
         images: allImages,
         operating_hours: openingHours || formData.operating_hours,
@@ -265,7 +307,7 @@ export const EditParkingSpot: React.FC = () => {
       navigate('/admin');
     } catch (error: any) {
       console.error("Error updating parking spot:", error);
-      setError(error.message || t('failed_to_update_parking_spot'));
+      setError(error.message || t('spot_creation_failed_error'));
     } finally {
       setSaving(false);
     }
@@ -290,7 +332,7 @@ export const EditParkingSpot: React.FC = () => {
       if (bookingsError) throw bookingsError;
       
       if (bookings && bookings.length > 0) {
-        alert(t('cannot_delete_active_bookings'));
+        alert(t('spot_cannot_delete_active_bookings'));
         setLoading(false);
         return;
       }
@@ -306,9 +348,35 @@ export const EditParkingSpot: React.FC = () => {
       navigate('/admin');
     } catch (error: any) {
       console.error('Error deleting parking spot:', error);
-      setError(error.message || t('failed_to_delete_parking_spot'));
+      setError(error.message || t('spot_creation_failed_error'));
       setLoading(false);
     }
+  };
+
+  const handlePricingToggle = (priceType: 'hour' | 'day' | 'month') => {
+    setFormData(prev => ({
+      ...prev,
+      pricing: {
+        ...prev.pricing,
+        [priceType]: {
+          ...prev.pricing?.[priceType],
+          enabled: !prev.pricing?.[priceType]?.enabled
+        }
+      } as any
+    }));
+  };
+
+  const handlePriceChange = (priceType: 'hour' | 'day' | 'month', price: number) => {
+    setFormData(prev => ({
+      ...prev,
+      pricing: {
+        ...prev.pricing,
+        [priceType]: {
+          ...prev.pricing?.[priceType],
+          price: price
+        }
+      } as any
+    }));
   };
 
   if (loading) {
@@ -323,11 +391,11 @@ export const EditParkingSpot: React.FC = () => {
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-4xl mx-auto px-4 py-8">
         <button 
-          onClick={() => navigate('/admin')}
+          onClick={() => navigate('/owner')}
           className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors"
         >
           <ArrowLeft className="h-5 w-5" />
-          <span>{t('back_to_dashboard')}</span>
+          <span>{t('spot_back_to_dashboard')}</span>
         </button>
 
         <div className="bg-white rounded-xl shadow-lg p-8">
@@ -337,21 +405,10 @@ export const EditParkingSpot: React.FC = () => {
                 {t('edit_parking_spot')}
               </h1>
               <p className="text-gray-600">
-                {t('update_parking_spot_information')}
+                {t('spot_form_description')}
               </p>
             </div>
             <div className="flex items-center space-x-4">
-              {/* <div className="flex items-center space-x-2">
-                <span className="text-sm font-medium text-gray-700">
-                  {isEnabled ? t('enabled') : t('disabled')}
-                </span>
-                <button
-                  onClick={() => setIsEnabled(!isEnabled)}
-                  className="text-blue-600 hover:text-blue-800 transition-colors"
-                >
-                  {isEnabled ? <ToggleRight className="h-6 w-6" /> : <ToggleLeft className="h-6 w-6" />}
-                </button>
-              </div> */}
               <button
                 onClick={handleDelete}
                 className="flex items-center space-x-2 text-red-600 hover:text-red-800 transition-colors"
@@ -371,32 +428,32 @@ export const EditParkingSpot: React.FC = () => {
           <form onSubmit={handleSubmit} className="space-y-8">
             {/* Basic Information */}
             <div className="bg-gray-50 rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('spot_information')}</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('spot_basic_information')}</h3>
               <div className="grid md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    {t('spot_name')} *
+                    {t('spot_name_label')} *
                   </label>
                   <input
                     type="text"
                     name="name"
                     value={formData.name}
                     onChange={handleInputChange}
-                    placeholder="e.g., Central Plaza Parking"
+                    placeholder={t('spot_name_placeholder')}
                     className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                     required
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    {t('address')} *
+                    {t('spot_address_label')} *
                   </label>
                   <input
                     type="text"
                     name="address"
                     value={formData.address}
                     onChange={handleInputChange}
-                    placeholder="Full address of the parking spot"
+                    placeholder={t('spot_address_placeholder')}
                     className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                     required
                   />
@@ -404,24 +461,22 @@ export const EditParkingSpot: React.FC = () => {
               </div>
               <div className="mt-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  {t('description')}
+                  {t('spot_description_label')}
                 </label>
                 <textarea
                   name="description"
                   value={formData.description}
                   onChange={handleInputChange}
                   rows={3}
-                  placeholder="Describe your parking spot, its features, and any important information..."
+                  placeholder={t('spot_description_placeholder')}
                   className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                 />
               </div>
             </div>
 
             {/* Location */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between mb-2">
-                <label className="block text-sm font-medium text-gray-700">{t('location_settings')}</label>
-              </div>
+            <div className="bg-gray-50 rounded-lg p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('spot_location_on_map')}</h3>
               <MapPicker
                 latitude={coordinates.lat}
                 longitude={coordinates.lng}
@@ -433,66 +488,178 @@ export const EditParkingSpot: React.FC = () => {
             <div className="bg-gray-50 rounded-lg p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                 <DollarSign className="h-5 w-5 mr-2" />
-                {t('pricing')}
+                {t('spot_pricing_and_capacity')}
               </h3>
-              <div className="grid md:grid-cols-3 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    {t('price')} *
+              
+              {/* Total Slots */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  {t('spot_total_slots_label')} *
+                </label>
+                <input
+                  type="number"
+                  name="total_slots"
+                  value={formData.total_slots}
+                  onChange={handleInputChange}
+                  min="1"
+                  placeholder="50"
+                  className="w-full max-w-xs px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  required
+                />
+                <p className="text-sm text-gray-600 mt-1">{t('spot_total_slots_description')}</p>
+              </div>
+
+              {/* Pricing Options */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <label className="text-base font-medium text-gray-700">
+                    {t('spot_pricing_options')} *
                   </label>
-                  <input
-                    type="number"
-                    name="price"
-                    value={formData.price}
-                    onChange={handleInputChange}
-                    min="0"
-                    step="0.01"
-                    placeholder="25.00"
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                    required
-                  />
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormData(prev => ({
+                          ...prev,
+                          pricing: {
+                            hour: { enabled: true, price: 25 },
+                            day: { enabled: true, price: 150 },
+                            month: { enabled: true, price: 3000 }
+                          }
+                        }));
+                      }}
+                      className="text-sm text-blue-600 hover:text-blue-800"
+                    >
+                      {t('pricing_enable_all')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormData(prev => ({
+                          ...prev,
+                          pricing: {
+                            hour: { enabled: false, price: 0 },
+                            day: { enabled: false, price: 0 },
+                            month: { enabled: false, price: 0 }
+                          }
+                        }));
+                      }}
+                      className="text-sm text-blue-600 hover:text-blue-800"
+                    >
+                      {t('pricing_clear_all')}
+                    </button>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    {t('price_type')} *
-                  </label>
-                  <select
-                    name="price_type"
-                    value={formData.price_type}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                  >
-                    <option value="hour">{t('hourly_rate')}</option>
-                    <option value="day">{t('daily_rate')}</option>
-                    <option value="month">{t('monthly_rate')}</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    {t('total_slots')} *
-                  </label>
-                  <input
-                    type="number"
-                    name="total_slots"
-                    value={formData.total_slots}
-                    onChange={handleInputChange}
-                    min="1"
-                    placeholder="50"
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                    required
-                  />
+                
+                <p className="text-sm text-gray-500 mb-3">{t('spot_pricing_description')}</p>
+                
+                <div className="space-y-3">
+                  {/* Hourly */}
+                  <div className="flex items-center space-x-4 p-3 border border-gray-200 rounded-lg">
+                    <div className="flex items-center space-x-2 w-36">
+                      <Checkbox
+                        id="hour-pricing"
+                        checked={formData.pricing?.hour.enabled ?? false}
+                        onCheckedChange={() => handlePricingToggle('hour')}
+                      />
+                      <label htmlFor="hour-pricing" className="text-sm font-medium text-gray-900">
+                        {t('pricing_hourly')}
+                      </label>
+                    </div>
+                    
+                    {formData.pricing?.hour.enabled && (
+                      <div className="flex items-center space-x-2 flex-1">
+                        <span className="text-sm text-gray-600">$</span>
+                        <input
+                          type="number"
+                          value={formData.pricing?.hour.price ?? 0}
+                          onChange={(e) => handlePriceChange('hour', parseFloat(e.target.value) || 0)}
+                          min="0"
+                          step="0.01"
+                          placeholder="25.00"
+                          className="w-20 px-2 py-1 text-sm border border-gray-200 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                        />
+                        <span className="text-sm text-gray-600">{t('pricing_per_hour')}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Daily */}
+                  <div className="flex items-center space-x-4 p-3 border border-gray-200 rounded-lg">
+                    <div className="flex items-center space-x-2 w-36">
+                      <Checkbox
+                        id="day-pricing"
+                        checked={formData.pricing?.day.enabled ?? false}
+                        onCheckedChange={() => handlePricingToggle('day')}
+                      />
+                      <label htmlFor="day-pricing" className="text-sm font-medium text-gray-900">
+                        {t('pricing_daily')}
+                      </label>
+                    </div>
+                    
+                    {formData.pricing?.day.enabled && (
+                      <div className="flex items-center space-x-2 flex-1">
+                        <span className="text-sm text-gray-600">$</span>
+                        <input
+                          type="number"
+                          value={formData.pricing?.day.price ?? 0}
+                          onChange={(e) => handlePriceChange('day', parseFloat(e.target.value) || 0)}
+                          min="0"
+                          step="0.01"
+                          placeholder="150.00"
+                          className="w-20 px-2 py-1 text-sm border border-gray-200 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                        />
+                        <span className="text-sm text-gray-600">{t('pricing_per_day')}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Monthly */}
+                  <div className="flex items-center space-x-4 p-3 border border-gray-200 rounded-lg">
+                    <div className="flex items-center space-x-2 w-36">
+                      <Checkbox
+                        id="month-pricing"
+                        checked={formData.pricing?.month.enabled ?? false}
+                        onCheckedChange={() => handlePricingToggle('month')}
+                      />
+                      <label htmlFor="month-pricing" className="text-sm font-medium text-gray-900">
+                        {t('pricing_monthly')}
+                      </label>
+                    </div>
+                    
+                    {formData.pricing?.month.enabled && (
+                      <div className="flex items-center space-x-2 flex-1">
+                        <span className="text-sm text-gray-600">$</span>
+                        <input
+                          type="number"
+                          value={formData.pricing?.month.price ?? 0}
+                          onChange={(e) => handlePriceChange('month', parseFloat(e.target.value) || 0)}
+                          min="0"
+                          step="0.01"
+                          placeholder="3000.00"
+                          className="w-20 px-2 py-1 text-sm border border-gray-200 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                        />
+                        <span className="text-sm text-gray-600">{t('pricing_per_month')}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
 
-            <OpeningHours value={openingHours} onChange={setOpeningHours} />
+            {/* Opening Hours */}
+            <div className="bg-gray-50 rounded-lg p-6">
+              <OpeningHours value={openingHours} onChange={setOpeningHours} t={t} />
+            </div>
 
             {/* Amenities */}
             <div className="bg-gray-50 rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('amenities')}</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('spot_amenities')}</h3>
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {availableAmenities.map((amenity) => {
-                  const isSelected = formData.amenities?.includes(amenity.name);
+                  const Icon = amenity.icon;
+                  const amenityName = t(amenity.nameKey);
+                  const isSelected = formData.amenities?.includes(amenityName);
                   return (
                     <button
                       key={amenity.id}
@@ -504,7 +671,8 @@ export const EditParkingSpot: React.FC = () => {
                           : 'border-gray-200 hover:border-gray-300'
                       }`}
                     >
-                      <span className="font-medium">{amenity.name}</span>
+                      <Icon className="h-5 w-5" />
+                      <span className="font-medium">{amenityName}</span>
                     </button>
                   );
                 })}
@@ -516,10 +684,10 @@ export const EditParkingSpot: React.FC = () => {
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-gray-900 flex items-center">
                   <Camera className="h-5 w-5 mr-2" />
-                  {t('upload_images')} ({t('required')})
+                  {t('spot_photos_required')}
                 </h3>
                 <span className="text-sm text-gray-600">
-                  {(formData.images?.length || 0) + imageFiles.length}/4 images
+                  {t('spot_images_count', { count: (formData.images?.length || 0) + imageFiles.length })}
                 </span>
               </div>
               
@@ -575,8 +743,8 @@ export const EditParkingSpot: React.FC = () => {
                       htmlFor="image-upload"
                       className="h-32 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center hover:border-gray-400 transition-colors cursor-pointer"
                     >
-                      <Plus className="h-8 w-8 text-gray-400 mb-2" />
-                      <span className="text-sm text-gray-600">{t('upload_from_device')}</span>
+                      <Upload className="h-8 w-8 text-gray-400 mb-2" />
+                      <span className="text-sm text-gray-600">{t('spot_upload_image')}</span>
                     </label>
                   </div>
                 )}
@@ -584,12 +752,12 @@ export const EditParkingSpot: React.FC = () => {
               
               <div className="text-sm text-gray-600 flex items-center space-x-2">
                 <Camera className="h-4 w-4 text-gray-500" />
-                <span>Upload clear photos of your parking spot (min 1, max 4 images)</span>
+                <span>{t('spot_upload_photos_description')}</span>
               </div>
               
               {(formData.images?.length === 0 || !formData.images) && imageFiles.length === 0 && (
                 <div className="mt-2 text-sm text-red-600">
-                  {t('please_add_at_least_one_image')}
+                  {t('spot_at_least_one_image_required')}
                 </div>
               )}
             </div>
@@ -598,26 +766,27 @@ export const EditParkingSpot: React.FC = () => {
             <div className="flex gap-4 pt-6">
               <button
                 type="button"
-                onClick={() => navigate('/admin')}
+                onClick={() => navigate('/owner')}
                 disabled={saving}
                 className="flex-1 border border-gray-200 py-3 px-6 rounded-lg font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50"
               >
-                {t('cancel')}
+                {t('spot_cancel')}
               </button>
               <button
                 type="submit"
-                disabled={saving || (formData.images?.length === 0 && imageFiles.length === 0)}
+                disabled={saving || (formData.images?.length === 0 && imageFiles.length === 0) || (formData.pricing ? Object.values(formData.pricing).filter(p => p.enabled).length === 0 : true)}
                 className="flex-1 bg-blue-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
               >
                 {saving ? (
                   <>
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                    <span>{t('saving')}</span>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    <span>{t('spot_creating')}</span>
                   </>
                 ) : (
                   <>
                     <Save className="h-5 w-5" />
-                    <span>{t('save_changes')}</span>
+                    {/* <span>{t('save_changes')}</span> */}
+                    <span>Save Changes</span>
                   </>
                 )}
               </button>

@@ -13,16 +13,17 @@ interface DayHours {
 interface OpeningHoursProps {
   value: string;
   onChange: (hours: string) => void;
+  t?: (key: string) => string; // เพิ่ม translation function
 }
 
 const DAYS = [
-  'Monday',
-  'Tuesday', 
-  'Wednesday',
-  'Thursday',
-  'Friday',
-  'Saturday',
-  'Sunday'
+  { key: 'monday', en: 'Monday', th: 'จันทร์' },
+  { key: 'tuesday', en: 'Tuesday', th: 'อังคาร' },
+  { key: 'wednesday', en: 'Wednesday', th: 'พุธ' },
+  { key: 'thursday', en: 'Thursday', th: 'พฤหัสบดี' },
+  { key: 'friday', en: 'Friday', th: 'ศุกร์' },
+  { key: 'saturday', en: 'Saturday', th: 'เสาร์' },
+  { key: 'sunday', en: 'Sunday', th: 'อาทิตย์' }
 ];
 
 const TIME_OPTIONS = [
@@ -32,9 +33,12 @@ const TIME_OPTIONS = [
   '18:00', '19:00', '20:00', '21:00', '22:00', '23:00'
 ];
 
-export const OpeningHours: React.FC<OpeningHoursProps> = ({ value, onChange }) => {
+export const OpeningHours: React.FC<OpeningHoursProps> = ({ value, onChange, t }) => {
   const [hours, setHours] = useState<Record<string, DayHours>>({});
   const [is24_7, setIs24_7] = useState(false);
+
+  // Default translation function if not provided
+  const translate = t || ((key: string) => key);
 
   // Initialize hours from value prop
   useEffect(() => {
@@ -60,7 +64,7 @@ export const OpeningHours: React.FC<OpeningHoursProps> = ({ value, onChange }) =
   const initializeDefaultHours = () => {
     const defaultHours: Record<string, DayHours> = {};
     DAYS.forEach(day => {
-      defaultHours[day] = {
+      defaultHours[day.key] = {
         isOpen: false,
         openTime: '09:00',
         closeTime: '17:00',
@@ -74,7 +78,7 @@ export const OpeningHours: React.FC<OpeningHoursProps> = ({ value, onChange }) =
   const initializeAllDays24Hours = () => {
     const allDays24: Record<string, DayHours> = {};
     DAYS.forEach(day => {
-      allDays24[day] = {
+      allDays24[day.key] = {
         isOpen: true,
         openTime: '00:00',
         closeTime: '23:59',
@@ -90,7 +94,7 @@ export const OpeningHours: React.FC<OpeningHoursProps> = ({ value, onChange }) =
     
     // Check if all days are 24/7
     const allDays24Hours = DAYS.every(day => 
-      newHours[day]?.isOpen && newHours[day]?.is24Hours
+      newHours[day.key]?.isOpen && newHours[day.key]?.is24Hours
     );
     
     if (allDays24Hours) {
@@ -141,7 +145,7 @@ export const OpeningHours: React.FC<OpeningHoursProps> = ({ value, onChange }) =
   const selectAllDays = () => {
     const newHours: Record<string, DayHours> = {};
     DAYS.forEach(day => {
-      newHours[day] = {
+      newHours[day.key] = {
         isOpen: true,
         openTime: '09:00',
         closeTime: '17:00',
@@ -159,74 +163,74 @@ export const OpeningHours: React.FC<OpeningHoursProps> = ({ value, onChange }) =
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <Label className="text-base font-medium">Opening Hours</Label>
+        <Label className="text-base font-medium">{translate('opening_hours')}</Label>
         <div className="flex gap-2">
           <button
             type="button"
             onClick={selectAllDays}
             className="text-sm text-blue-600 hover:text-blue-800"
           >
-            Select All Days
+            {translate('select_all_days')}
           </button>
           <button
             type="button"
             onClick={set24HoursAll}
             className="text-sm text-blue-600 hover:text-blue-800"
           >
-            24/7 Access
+            {translate('24_7_access')}
           </button>
         </div>
       </div>
 
       <div className="space-y-3">
         {DAYS.map(day => (
-          <div key={day} className="flex items-center space-x-4 p-3 border border-gray-200 rounded-lg">
-            <div className="flex items-center space-x-2 w-24">
+          <div key={day.key} className="flex items-center space-x-4 p-3 border border-gray-200 rounded-lg bg-white">
+            <div className="flex items-center space-x-2 w-32">
               <Checkbox
-                checked={hours[day]?.isOpen || false}
-                onCheckedChange={(checked) => toggleDay(day, checked as boolean)}
+                checked={hours[day.key]?.isOpen || false}
+                onCheckedChange={(checked) => toggleDay(day.key, checked as boolean)}
               />
-              <Label className="text-sm font-medium">{day}</Label>
+              <Label className="text-sm font-medium">{translate(day.key)}</Label>
             </div>
 
-            {hours[day]?.isOpen && (
+            {hours[day.key]?.isOpen && (
               <>
                 <div className="flex items-center space-x-2">
                   <Checkbox
-                    checked={hours[day]?.is24Hours || false}
-                    onCheckedChange={(checked) => toggle24Hours(day, checked as boolean)}
+                    checked={hours[day.key]?.is24Hours || false}
+                    onCheckedChange={(checked) => toggle24Hours(day.key, checked as boolean)}
                   />
-                  <Label className="text-sm">24 Hours</Label>
+                  <Label className="text-sm">{translate('24_hours')}</Label>
                 </div>
 
-                {!hours[day]?.is24Hours && (
+                {!hours[day.key]?.is24Hours && (
                   <div className="flex items-center space-x-2">
                     <Select
-                      value={hours[day]?.openTime || '09:00'}
-                      onValueChange={(time) => updateTime(day, 'openTime', time)}
+                      value={hours[day.key]?.openTime || '09:00'}
+                      onValueChange={(time) => updateTime(day.key, 'openTime', time)}
                     >
-                      <SelectTrigger className="w-20">
+                      <SelectTrigger className="w-20 bg-white border-gray-300">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="bg-white border border-gray-200 shadow-lg">
                         {TIME_OPTIONS.map(time => (
-                          <SelectItem key={time} value={time}>{time}</SelectItem>
+                          <SelectItem key={time} value={time} className="hover:bg-gray-50">{time}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                     
-                    <span className="text-sm text-gray-500">to</span>
+                    <span className="text-sm text-gray-500">{translate('to')}</span>
                     
                     <Select
-                      value={hours[day]?.closeTime || '17:00'}
-                      onValueChange={(time) => updateTime(day, 'closeTime', time)}
+                      value={hours[day.key]?.closeTime || '17:00'}
+                      onValueChange={(time) => updateTime(day.key, 'closeTime', time)}
                     >
-                      <SelectTrigger className="w-20">
+                      <SelectTrigger className="w-20 bg-white border-gray-300">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="bg-white border border-gray-200 shadow-lg">
                         {TIME_OPTIONS.map(time => (
-                          <SelectItem key={time} value={time}>{time}</SelectItem>
+                          <SelectItem key={time} value={time} className="hover:bg-gray-50">{time}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -240,7 +244,7 @@ export const OpeningHours: React.FC<OpeningHoursProps> = ({ value, onChange }) =
 
       {is24_7 && (
         <div className="text-center p-4 bg-green-50 border border-green-200 rounded-lg">
-          <span className="text-green-800 font-semibold">24/7 Access Available</span>
+          <span className="text-green-800 font-semibold">{translate('24_7_access_available')}</span>
         </div>
       )}
     </div>

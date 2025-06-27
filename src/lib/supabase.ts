@@ -31,7 +31,14 @@ export interface ParkingSpot {
   total_slots: number;
   available_slots: number;
   price: number;
+  daily_price?: number;
+  monthly_price?: number;
   price_type: string;
+  pricing?: {
+    hour: { enabled: boolean; price: number };
+    day: { enabled: boolean; price: number };
+    month: { enabled: boolean; price: number };
+  };
   amenities: string[];
   images: string[];
   operating_hours: any;

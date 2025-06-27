@@ -90,6 +90,88 @@ const translations: Translations = {
     th: '© 2024 ParkPass ทำให้การจอดรถง่ายและมีกำไร'
   },
 
+  // Search & Filters
+  'search_by_location_or_address': {
+    en: 'Search by location or address...',
+    th: 'ค้นหาตามสถานที่หรือที่อยู่...'
+  },
+  'find_near_me': {
+    en: 'Find Near Me',
+    th: 'ค้นหาใกล้ฉัน'
+  },
+  'locating': {
+    en: 'Locating...',
+    th: 'กำลังค้นหาตำแหน่ง...'
+  },
+  'filters': {
+    en: 'Filters',
+    th: 'ตัวกรอง'
+  },
+  'price_range_per_hour': {
+    en: 'Price Range (per hour)',
+    th: 'ช่วงราคา (ต่อชั่วโมง)'
+  },
+  'parking_type': {
+    en: 'Parking Type',
+    th: 'ประเภทที่จอดรถ'
+  },
+  'all_types': {
+    en: 'All Types',
+    th: 'ทุกประเภท'
+  },
+  'sort_by': {
+    en: 'Sort By',
+    th: 'เรียงตาม'
+  },
+  'default': {
+    en: 'Default',
+    th: 'ค่าเริ่มต้น'
+  },
+  'price_low_to_high': {
+    en: 'Price: Low to High',
+    th: 'ราคา: ต่ำไปสูง'
+  },
+  'price_high_to_low': {
+    en: 'Price: High to Low',
+    th: 'ราคา: สูงไปต่ำ'
+  },
+  'name_a_to_z': {
+    en: 'Name: A to Z',
+    th: 'ชื่อ: ก ถึง ฮ'
+  },
+  'distance_nearest': {
+    en: 'Distance: Nearest',
+    th: 'ระยะทาง: ใกล้ที่สุด'
+  },
+  'available_now_only': {
+    en: 'Available now only',
+    th: 'ว่างในขณะนี้เท่านั้น'
+  },
+  'clear_filters': {
+    en: 'Clear Filters',
+    th: 'ล้างตัวกรอง'
+  },
+  'min': {
+    en: 'Min',
+    th: 'ต่ำสุด'
+  },
+  'max': {
+    en: 'Max',
+    th: 'สูงสุด'
+  },
+  'price_range': {
+    en: 'Price Range',
+    th: 'ช่วงราคา'
+  },
+  'per_day': {
+    en: 'per day',
+    th: 'ต่อวัน'
+  },
+  'per_month': {
+    en: 'per month',
+    th: 'ต่อเดือน'
+  },
+
   // Profile Page
   'my_profile': {
     en: 'My Profile',
@@ -704,6 +786,22 @@ const translations: Translations = {
     en: 'Cancelled',
     th: 'ยกเลิกแล้ว'
   },
+  'expired': {
+    en: 'Expired',
+    th: 'หมดอายุ'
+  },
+  'booking_expired': {
+    en: 'Booking Expired',
+    th: 'การจองหมดอายุ'
+  },
+  'booking_expired_notice': {
+    en: 'Past deadline',
+    th: 'เลยกำหนดเวลา'
+  },
+  'booking_expired_message': {
+    en: 'This booking has expired as the reserved time has passed. You can book this spot again for future use.',
+    th: 'การจองนี้หมดอายุแล้วเนื่องจากเลยเวลาที่จองไว้ คุณสามารถจองสถานที่นี้อีกครั้งสำหรับการใช้งานในอนาคต'
+  },
   'verified': {
     en: 'Verified',
     th: 'ยืนยันแล้ว'
@@ -1178,6 +1276,18 @@ const translations: Translations = {
     en: 'Select Date',
     th: 'เลือกวันที่'
   },
+  'select_hour': {
+    en: 'Select Hour',
+    th: 'เลือกชั่วโมง'
+  },
+  'maintenance': {
+    en: 'Maintenance',
+    th: 'ปรับปรุง'
+  },
+  'blocked': {
+    en: 'Blocked',
+    th: 'บล็อก'
+  },
   'block_time': {
     en: 'Block Time',
     th: 'บล็อกเวลา'
@@ -1188,19 +1298,19 @@ const translations: Translations = {
   },
   'no_time_blocks_set': {
     en: 'No time blocks set for this date',
-    th: 'ไม่มีการตั้งบล็อกเวลาสำหรับวันนี้'
+    th: 'ไม่มีการบล็อกเวลาสำหรับวันที่นี้'
   },
   'all_slots_available_operating_hours': {
     en: 'All slots are available during operating hours',
-    th: 'ที่จอดทั้งหมดพร้อมใช้งานในช่วงเวลาทำการ'
+    th: 'ที่จอดทั้งหมดพร้อมใช้งานในเวลาเปิดบริการ'
   },
   'all_upcoming_time_blocks': {
     en: 'All Upcoming Time Blocks',
     th: 'บล็อกเวลาที่จะมาถึงทั้งหมด'
   },
   'no_time_blocks_configured': {
-    en: 'No time blocks configured',
-    th: 'ไม่มีการกำหนดบล็อกเวลา'
+    en: 'No time blocks configured yet',
+    th: 'ยังไม่มีการตั้งค่าบล็อกเวลา'
   },
   'block_time_slot': {
     en: 'Block Time Slot',
@@ -1208,387 +1318,35 @@ const translations: Translations = {
   },
   'slots_affected': {
     en: 'Slots Affected',
-    th: 'ช่องจอดที่ได้รับผลกระทบ'
+    th: 'จำนวนที่จอดที่ได้รับผลกระทบ'
   },
   'reason_optional': {
     en: 'Reason (Optional)',
     th: 'เหตุผล (ไม่บังคับ)'
   },
   'example_reason_placeholder': {
-    en: 'e.g., Private event, Cleaning, Repairs...',
-    th: 'เช่น งานส่วนตัว, ทำความสะอาด, ซ่อมแซม...'
+    en: 'e.g., Maintenance, Private event, etc.',
+    th: 'เช่น การบำรุงรักษา งานส่วนตัว ฯลฯ'
   },
   'add_block': {
     en: 'Add Block',
     th: 'เพิ่มบล็อก'
   },
-  'remove_time_block_confirm': {
-    en: 'Are you sure you want to remove this time block?',
-    th: 'คุณแน่ใจหรือไม่ที่จะลบบล็อกเวลานี้?'
-  },
   'slots_affected_lowercase': {
     en: 'slots affected',
-    th: 'ช่องจอดที่ได้รับผลกระทบ'
-  },
-
-  // Edit Parking Spot
-  'spot_information': {
-    en: 'Spot Information',
-    th: 'ข้อมูลที่จอดรถ'
-  },
-  'price_type': {
-    en: 'Price Type',
-    th: 'ประเภทราคา'
-  },
-  'location_settings': {
-    en: 'Location Settings',
-    th: 'การตั้งค่าตำแหน่ง'
-  },
-  'get_current_location': {
-    en: 'Get Current Location',
-    th: 'รับตำแหน่งปัจจุบัน'
-  },
-  'getting_location': {
-    en: 'Getting location...',
-    th: 'กำลังรับตำแหน่ง...'
-  },
-  'enable_disable_spot': {
-    en: 'Enable/Disable Spot',
-    th: 'เปิด/ปิดใช้งานที่จอดรถ'
-  },
-  'enabled': {
-    en: 'Enabled',
-    th: 'เปิดใช้งาน'
-  },
-  'disabled': {
-    en: 'Disabled',
-    th: 'ปิดใช้งาน'
-  },
-  'save_changes': {
-    en: 'Save Changes',
-    th: 'บันทึกการเปลี่ยนแปลง'
-  },
-  'saving': {
-    en: 'Saving...',
-    th: 'กำลังบันทึก...'
-  },
-  'failed_to_load_spot_details': {
-    en: 'Failed to load parking spot details',
-    th: 'ไม่สามารถโหลดรายละเอียดที่จอดรถได้'
-  },
-  'maximum_4_images_allowed': {
-    en: 'Maximum 4 images allowed',
-    th: 'อนุญาตรูปภาพสูงสุด 4 รูป'
-  },
-  'file_not_image': {
-    en: 'is not an image',
-    th: 'ไม่ใช่รูปภาพ'
-  },
-  'file_exceeds_5mb_limit': {
-    en: 'exceeds 5MB limit',
-    th: 'เกิน 5MB'
-  },
-  'enter_image_url': {
-    en: 'Enter image URL:',
-    th: 'ใส่ URL รูปภาพ:'
-  },
-  'upload_from_device': {
-    en: 'Upload from Device',
-    th: 'อัปโหลดจากอุปกรณ์'
-  },
-  'add_image_url': {
-    en: 'Add Image URL',
-    th: 'เพิ่ม URL รูปภาพ'
-  },
-  'click_map_to_set_location': {
-    en: 'Click on the map to set the location',
-    th: 'คลิกบนแผนที่เพื่อตั้งตำแหน่ง'
-  },
-  'please_fill_required_fields': {
-    en: 'Please fill in all required fields',
-    th: 'กรุณากรอกข้อมูลในช่องที่จำเป็นทั้งหมด'
-  },
-  'please_add_at_least_one_image': {
-    en: 'Please add at least one image of your parking spot',
-    th: 'กรุณาเพิ่มรูปภาพของที่จอดรถอย่างน้อย 1 รูป'
-  },
-  'failed_to_update_parking_spot': {
-    en: 'Failed to update parking spot. Please try again.',
-    th: 'ไม่สามารถอัปเดตที่จอดรถได้ กรุณาลองใหม่อีกครั้ง'
-  },
-  'confirm_delete_parking_spot': {
-    en: 'Are you sure you want to delete this parking spot? This action cannot be undone.',
-    th: 'คุณแน่ใจหรือไม่ที่จะลบที่จอดรถนี้? การกระทำนี้ไม่สามารถยกเลิกได้'
-  },
-  'cannot_delete_active_bookings': {
-    en: 'Cannot delete this parking spot because it has active bookings. Please cancel all bookings first or set the spot to inactive.',
-    th: 'ไม่สามารถลบที่จอดรถนี้ได้เนื่องจากมีการจองที่ใช้งานอยู่ กรุณายกเลิกการจองทั้งหมดก่อนหรือตั้งค่าที่จอดรถเป็นไม่ใช้งาน'
-  },
-  'failed_to_delete_parking_spot': {
-    en: 'Failed to delete parking spot',
-    th: 'ไม่สามารถลบที่จอดรถได้'
-  },
-  'update_parking_spot_information': {
-    en: 'Update your parking spot information and settings',
-    th: 'อัปเดตข้อมูลและการตั้งค่าของที่จอดรถของคุณ'
-  },
-  'required': {
-    en: 'Required',
-    th: 'จำเป็น'
-  },
-  'please_select_rating': {
-    en: 'Please select a rating',
-    th: 'กรุณาเลือกคะแนน'
-  },
-  'please_login_to_upload_photos': {
-    en: 'Please login to upload photos',
-    th: 'กรุณาเข้าสู่ระบบเพื่ออัปโหลดรูปภาพ'
-  },
-  'failed_to_upload_photos': {
-    en: 'Failed to upload photos. Please try again.',
-    th: 'ไม่สามารถอัปโหลดรูปภาพได้ กรุณาลองใหม่อีกครั้ง'
-  },
-  'terrible': {
-    en: 'Terrible',
-    th: 'แย่มาก'
-  },
-  'poor': {
-    en: 'Poor',
-    th: 'แย่'
-  },
-  'average': {
-    en: 'Average',
-    th: 'ปานกลาง'
-  },
-  'good': {
-    en: 'Good',
-    th: 'ดี'
-  },
-  'excellent': {
-    en: 'Excellent',
-    th: 'ยอดเยี่ยม'
-  },
-  'how_was_your_parking_experience': {
-    en: 'How was your parking experience?',
-    th: 'ประสบการณ์การจอดรถของคุณเป็นอย่างไร?'
-  },
-  'write_your_review_optional': {
-    en: 'Write your review (optional)',
-    th: 'เขียนรีวิวของคุณ (ไม่บังคับ)'
-  },
-  'review_placeholder': {
-    en: 'Share your experience with other drivers. Was the location easy to find? How was the security? Any tips for future visitors?',
-    th: 'แบ่งปันประสบการณ์ของคุณกับผู้ขับขี่คนอื่น สถานที่หาง่ายหรือไม่? ความปลอดภัยเป็นอย่างไร? มีเคล็ดลับสำหรับผู้มาเยือนในอนาคตหรือไม่?'
-  },
-  'help_other_drivers': {
-    en: 'Help other drivers by sharing specific details',
-    th: 'ช่วยผู้ขับขี่คนอื่นโดยการแบ่งปันรายละเอียดที่เฉพาะเจาะจง'
-  },
-  'add_photos_optional': {
-    en: 'Add photos (optional)',
-    th: 'เพิ่มรูปภาพ (ไม่บังคับ)'
-  },
-  'add_photo': {
-    en: 'Add Photo',
-    th: 'เพิ่มรูปภาพ'
-  },
-  'add_up_to_3_photos': {
-    en: 'Add up to 3 photos to help other drivers',
-    th: 'เพิ่มรูปภาพได้สูงสุด 3 รูปเพื่อช่วยผู้ขับขี่คนอื่น'
-  },
-  'rate_specific_aspects_optional': {
-    en: 'Rate specific aspects (optional)',
-    th: 'ให้คะแนนด้านต่างๆ (ไม่บังคับ)'
-  },
-  'location_access': {
-    en: 'Location & Access',
-    th: 'ตำแหน่งและการเข้าถึง'
-  },
-  'security_safety': {
-    en: 'Security & Safety',
-    th: 'ความปลอดภัย'
-  },
-  'value_for_money': {
-    en: 'Value for Money',
-    th: 'คุ้มค่าเงิน'
-  },
-  'cleanliness': {
-    en: 'Cleanliness',
-    th: 'ความสะอาด'
-  },
-
-  // Amenities
-  'wifi': {
-    en: 'WiFi',
-    th: 'ไวไฟ'
-  },
-  'security_camera': {
-    en: 'Security Camera',
-    th: 'กล้องรักษาความปลอดภัย'
-  },
-  'covered_parking': {
-    en: 'Covered Parking',
-    th: 'ที่จอดรถมีหลังคา'
-  },
-  'disabled_access': {
-    en: 'Disabled Access',
-    th: 'ที่จอดรถสำหรับผู้พิการ'
-  },
-  'ev_charging': {
-    en: 'EV Charging',
-    th: 'จุดชาร์จรถยนต์ไฟฟ้า'
-  },
-  'valet_service': {
-    en: 'Valet Service',
-    th: 'บริการรับจอดรถ'
-  },
-  'restroom': {
-    en: 'Restroom',
-    th: 'ห้องน้ำ'
-  },
-  'lighting': {
-    en: 'Lighting',
-    th: 'แสงไฟ'
-  },
-
-  // Additional amenities for ParkingSpotCard
-  'amenities.evCharging': {
-    en: 'EV Charging',
-    th: 'จุดชาร์จรถยนต์ไฟฟ้า'
-  },
-  'amenities.wifi': {
-    en: 'WiFi',
-    th: 'WiFi'
-  },
-  'amenities.cctvSecurity': {
-    en: 'CCTV Security',
-    th: 'กล้องวงจรปิด'
-  },
-  'amenities.covered': {
-    en: 'Covered',
-    th: 'มีหลังคา'
-  },
-  'amenities.elevator': {
-    en: 'Elevator',
-    th: 'ลิฟต์'
-  },
-  'amenities.access24_7': {
-    en: '24/7 Access',
-    th: 'เข้าได้ 24/7'
-  },
-  'amenities.shopping': {
-    en: 'Shopping',
-    th: 'ช้อปปิ้ง'
-  },
-  'amenities.foodCourt': {
-    en: 'Food Court',
-    th: 'ศูนย์อาหาร'
-  },
-  'amenities.cafeNearby': {
-    en: 'Cafe Nearby',
-    th: 'คาเฟ่ใกล้เคียง'
-  },
-  'amenities.valetService': {
-    en: 'Valet Service',
-    th: 'บริการรับจอดรถ'
-  },
-  'amenities.carWash': {
-    en: 'Car Wash',
-    th: 'ล้างรถ'
-  },
-  'amenities.shuttle': {
-    en: 'Shuttle',
-    th: 'รถรับส่ง'
-  },
-  'amenities.storage': {
-    en: 'Storage',
-    th: 'ที่เก็บของ'
-  },
-  'amenities.restroom': {
-    en: 'Restroom',
-    th: 'ห้องน้ำ'
-  },
-  'amenities.accessible': {
-    en: 'Accessible',
-    th: 'เข้าถึงง่าย'
-  },
-  'amenities.secureAccess': {
-    en: 'Secure Access',
-    th: 'เข้าได้อย่างปลอดภัย'
-  },
-  'amenities.smartParking': {
-    en: 'Smart Parking',
-    th: 'ที่จอดรถอัจฉริยะ'
-  },
-  'amenities.payment': {
-    en: 'Payment',
-    th: 'การชำระเงิน'
-  },
-  'amenities.standardParking': {
-    en: 'Standard Parking',
-    th: 'ที่จอดรถมาตรฐาน'
-  },
-
-  // Status for availability
-  'status.full': {
-    en: 'Full',
-    th: 'เต็ม'
-  },
-  'status.available_hours': {
-    en: 'Available within 2 hours',
-    th: 'ว่างภายใน 2 ชั่วโมงนี้'
-  },
-
-  // Additional card-related translations
-  'open24_7': {
-    en: 'Open 24/7',
-    th: 'เปิด 24/7'
-  },
-  'checkHours': {
-    en: 'Check hours',
-    th: 'ตรวจสอบเวลา'
-  },
-  'bookNow': {
-    en: 'Book Now',
-    th: 'จองเลย'
-  },
-  'scan_qr_payment_amount': {
-    en: 'Scan this QR code with your banking app to make a payment of ${{amount}}',
-    th: 'สแกน QR Code นี้ด้วยแอปธนาคารเพื่อชำระเงินจำนวน ${{amount}}'
-  },
-
-  // Status Messages
-  'success': {
-    en: 'Success',
-    th: 'สำเร็จ'
-  },
-  'error': {
-    en: 'Error',
-    th: 'ข้อผิดพลาด'
-  },
-  'warning': {
-    en: 'Warning',
-    th: 'คำเตือน'
-  },
-  'info': {
-    en: 'Information',
-    th: 'ข้อมูล'
-  },
-  'operation_successful': {
-    en: 'Operation completed successfully',
-    th: 'ดำเนินการสำเร็จ'
-  },
-  'operation_failed': {
-    en: 'Operation failed',
-    th: 'การดำเนินการล้มเหลว'
-  },
-  'please_try_again': {
-    en: 'Please try again',
-    th: 'กรุณาลองใหม่อีกครั้ง'
-  },
-  'network_error': {
-    en: 'Network error',
-    th: 'ข้อผิดพลาดเครือข่าย'
+    th: 'ที่จอดที่ได้รับผลกระทบ'
+  },
+  'reason': {
+    en: 'Reason',
+    th: 'เหตุผล'
+  },
+  'all_day': {
+    en: 'All Day',
+    th: 'ตลอดวัน'
+  },
+  'total_blocked_slots_exceed_available': {
+    en: 'Total blocked slots cannot exceed available parking slots',
+    th: 'จำนวนช่องจอดที่บล็อกไม่สามารถเกินช่องจอดที่มีทั้งหมด'
   },
 
   // Existing Login Page translations
@@ -2271,7 +2029,7 @@ const translations: Translations = {
   },
   'quick_actions': {
     en: 'Quick Actions',
-    th: 'การกระทำด่วน'
+    th: 'การดำเนินการด่วน'
   },
   'report_issue': {
     en: 'Report Issue',
@@ -2300,6 +2058,11 @@ const translations: Translations = {
   'available_slots': {
     en: '{{available}}/{{total}} available',
     th: 'ว่าง {{available}}/{{total}}'
+  },
+  
+  'total_parking_slots': {
+    en: '{{total}} parking slots',
+    th: 'ที่จอดรถ {{total}} ช่อง'
   },
   
   // Booking Management
@@ -2488,6 +2251,7 @@ const translations: Translations = {
     th: 'กิจกรรมล่าสุด'
   },
   
+   
   // Alert messages
   'qr_payment_saved': {
     en: 'QR Code payment method saved successfully!',
@@ -2620,7 +2384,503 @@ const translations: Translations = {
   'avg_rating': {
     en: 'Avg Rating',
     th: 'คะแนนเฉลี่ย'
-  }
+  },
+  
+  // Form validation messages
+  'please_select_image_file': {
+    en: 'Please select an image file',
+    th: 'กรุณาเลือกไฟล์รูปภาพ'
+  },
+  'file_size_limit_5mb': {
+    en: 'File size must be less than 5MB',
+    th: 'ขนาดไฟล์ต้องน้อยกว่า 5MB'
+  },
+  'user_profile_not_found': {
+    en: 'User profile not found',
+    th: 'ไม่พบข้อมูลผู้ใช้'
+  },
+  'failed_save_payment_method': {
+    en: 'Failed to save payment method',
+    th: 'ไม่สามารถบันทึกวิธีการชำระเงินได้'
+  },
+  'payment_approved_success': {
+    en: 'Payment approved successfully!',
+    th: 'อนุมัติการชำระเงินเรียบร้อยแล้ว!'
+  },
+  'payment_rejected_success': {
+    en: 'Payment rejected successfully!',
+    th: 'ปฏิเสธการชำระเงินเรียบร้อยแล้ว!'
+  },
+  
+  // QR Scanner messages
+  'processing_scan': {
+    en: 'Processing scan...',
+    th: 'กำลังประมวลผลการสแกน...'
+  },
+  'booking_not_for_your_spot': {
+    en: 'This booking is not for one of your parking spots.',
+    th: 'การจองนี้ไม่ใช่สำหรับที่จอดรถของคุณ'
+  },
+  'entry_confirmed_booking_active': {
+    en: 'Entry confirmed! Booking is now active.',
+    th: 'ยืนยันการเข้าแล้ว! การจองเริ่มใช้งานแล้ว'
+  },
+  'exit_confirmed_booking_completed': {
+    en: 'Exit confirmed! Booking is now completed.',
+    th: 'ยืนยันการออกแล้ว! การจองเสร็จสิ้นแล้ว'
+  },
+  'booking_cancelled_qr_verified': {
+    en: 'Booking #{id} was cancelled - QR/PIN verified successfully',
+    th: 'การจอง #{id} ถูกยกเลิกไปแล้ว - QR/PIN ยืนยันสำเร็จ'
+  },
+  'scan_error_message': {
+    en: 'Error: {error}',
+    th: 'ข้อผิดพลาด: {error}'
+  },
+  'failed_process_scan': {
+    en: 'Failed to process scan',
+    th: 'ไม่สามารถประมวลผลการสแกนได้'
+  },
+
+  // Booking Detail Modal
+  'customer_information': {
+    en: 'Customer Information',
+    th: 'ข้อมูลลูกค้า'
+  },
+  'customer_name': {
+    en: 'Customer Name',
+    th: 'ชื่อลูกค้า'
+  },
+  'customer_id': {
+    en: 'Customer ID',
+    th: 'รหัสลูกค้า'
+  },
+  'not_available': {
+    en: 'Not Available',
+    th: 'ไม่มีข้อมูล'
+  },
+  'parking_information': {
+    en: 'Parking Information',
+    th: 'ข้อมูลที่จอดรถ'
+  },
+  'parking_spot': {
+    en: 'Parking Spot',
+    th: 'ที่จอดรถ'
+  },
+  'payment_information': {
+    en: 'Payment Information',
+    th: 'ข้อมูลการชำระเงิน'
+  },
+  'total_amount': {
+    en: 'Total Amount',
+    th: 'ยอดรวม'
+  },
+
+  'created_at': {
+    en: 'Created At',
+    th: 'สร้างเมื่อ'
+  },
+
+  // Payment Status Translations
+  'payment_paid': {
+    en: 'Paid',
+    th: 'ชำระแล้ว'
+  },
+  'payment_pending': {
+    en: 'Pending',
+    th: 'รอดำเนินการ'
+  },
+  'payment_verified': {
+    en: 'Verified',
+    th: 'ตรวจสอบแล้ว'
+  },
+  'payment_rejected': {
+    en: 'Rejected',
+    th: 'ถูกปฏิเสธ'
+  },
+
+  // Status Translations
+  'status_pending': {
+    en: 'Pending',
+    th: 'รอดำเนินการ'
+  },
+  'status_confirmed': {
+    en: 'Confirmed',
+    th: 'ยืนยันแล้ว'
+  },
+  'status_active': {
+    en: 'Active',
+    th: 'กำลังใช้งาน'
+  },
+  'status_completed': {
+    en: 'Completed',
+    th: 'เสร็จสิ้น'
+  },
+  'status_cancelled': {
+    en: 'Cancelled',
+    th: 'ยกเลิกแล้ว'
+  },
+  'status_expired': {
+    en: 'Expired',
+    th: 'หมดอายุ'
+  },
+
+  // Payment Method Translations
+  'payment_method_qr_code': {
+    en: 'QR Code',
+    th: 'รหัส QR'
+  },
+  'payment_method_bank_transfer': {
+    en: 'Bank Transfer',
+    th: 'โอนเงิน'
+  },
+  'payment_method_cash': {
+    en: 'Cash',
+    th: 'เงินสด'
+  },
+  'payment_method_credit_card': {
+    en: 'Credit Card',
+    th: 'บัตรเครดิต'
+  },
+
+  // Add Parking Spot Form
+  'add_parking_spot_title': {
+    en: 'Add New Parking Spot',
+    th: 'เพิ่มที่จอดรถใหม่'
+  },
+  'spot_basic_information': {
+    en: 'Basic Information',
+    th: 'ข้อมูลพื้นฐาน'
+  },
+  'spot_name_label': {
+    en: 'Parking Spot Name',
+    th: 'ชื่อที่จอดรถ'
+  },
+  'spot_name_placeholder': {
+    en: 'e.g., Central Plaza Parking',
+    th: 'เช่น ที่จอดรถเซ็นทรัลพลาซ่า'
+  },
+  'spot_address_label': {
+    en: 'Address',
+    th: 'ที่อยู่'
+  },
+  'spot_address_placeholder': {
+    en: 'Full address of the parking spot',
+    th: 'ที่อยู่เต็มของที่จอดรถ'
+  },
+  'spot_description_label': {
+    en: 'Description',
+    th: 'คำอธิบาย'
+  },
+  'spot_description_placeholder': {
+    en: 'Describe your parking spot, its features, and any important information...',
+    th: 'อธิบายที่จอดรถของคุณ คุณสมบัติ และข้อมูลสำคัญอื่นๆ...'
+  },
+  'spot_location_on_map': {
+    en: 'Location on Map',
+    th: 'ตำแหน่งบนแผนที่'
+  },
+  'spot_pricing_and_capacity': {
+    en: 'Pricing & Capacity',
+    th: 'ราคาและจำนวนช่อง'
+  },
+  'spot_total_slots_label': {
+    en: 'Total Parking Slots',
+    th: 'ที่จอดรถทั้งหมด'
+  },
+  'spot_total_slots_description': {
+    en: 'Total number of parking spaces available for service',
+    th: 'จำนวนช่องจอดรถทั้งหมดที่มีพร้อมให้บริการ'
+  },
+  'spot_pricing_options': {
+    en: 'Pricing Options',
+    th: 'ตัวเลือกราคา'
+  },
+  'spot_pricing_description': {
+    en: 'Select the pricing types you want to offer',
+    th: 'เลือกประเภทการชำระเงินที่ต้องการเปิดให้บริการ'
+  },
+  'pricing_hourly': {
+    en: 'Hourly',
+    th: 'รายชั่วโมง'
+  },
+  'pricing_daily': {
+    en: 'Daily',
+    th: 'รายวัน'
+  },
+  'pricing_monthly': {
+    en: 'Monthly',
+    th: 'รายเดือน'
+  },
+  'pricing_per_hour': {
+    en: 'per hour',
+    th: 'ต่อชั่วโมง'
+  },
+  'pricing_per_day': {
+    en: 'per day',
+    th: 'ต่อวัน'
+  },
+  'pricing_per_month': {
+    en: 'per month',
+    th: 'ต่อเดือน'
+  },
+  'pricing_enable_all': {
+    en: 'Enable All',
+    th: 'เปิดทั้งหมด'
+  },
+  'pricing_clear_all': {
+    en: 'Clear All',
+    th: 'ล้างทั้งหมด'
+  },
+  'spot_amenities': {
+    en: 'Amenities',
+    th: 'สิ่งอำนวยความสะดวก'
+  },
+  'spot_photos_required': {
+    en: 'Photos (Required)',
+    th: 'รูปภาพ (จำเป็น)'
+  },
+  'spot_images_count': {
+    en: '{{count}}/4 images',
+    th: '{{count}}/4 รูป'
+  },
+  'spot_upload_image': {
+    en: 'Upload Image',
+    th: 'อัปโหลดรูปภาพ'
+  },
+  'spot_upload_photos_description': {
+    en: 'Upload clear photos of your parking spot (min 1, max 4 images)',
+    th: 'อัปโหลดรูปภาพที่ชัดเจนของที่จอดรถ (ขั้นต่ำ 1 รูป สูงสุด 4 รูป)'
+  },
+  'spot_at_least_one_image_required': {
+    en: 'At least one image is required',
+    th: 'จำเป็นต้องมีรูปภาพอย่างน้อย 1 รูป'
+  },
+  'spot_cancel': {
+    en: 'Cancel',
+    th: 'ยกเลิก'
+  },
+  'spot_creating': {
+    en: 'Creating...',
+    th: 'กำลังสร้าง...'
+  },
+  'spot_create_button': {
+    en: 'Create Parking Spot',
+    th: 'สร้างที่จอดรถ'
+  },
+  'spot_back_to_dashboard': {
+    en: 'Back to Dashboard',
+    th: 'กลับไปยังแดชบอร์ด'
+  },
+  'spot_form_description': {
+    en: 'Fill in the details to create a new parking spot listing',
+    th: 'กรอกรายละเอียดเพื่อสร้างรายการที่จอดรถใหม่'
+  },
+  
+  // Opening Hours translations
+  'opening_hours': {
+    en: 'Opening Hours',
+    th: 'เวลาเปิด-ปิด'
+  },
+  'select_all_days': {
+    en: 'Select All Days',
+    th: 'เลือกทุกวัน'
+  },
+  '24_7_access': {
+    en: '24/7 Access',
+    th: 'เปิด 24 ชั่วโมง'
+  },
+  '24_hours': {
+    en: '24 Hours',
+    th: '24 ชั่วโมง'
+  },
+  'to': {
+    en: 'to',
+    th: 'ถึง'
+  },
+  '24_7_access_available': {
+    en: '24/7 Access Available',
+    th: 'เปิดให้บริการ 24 ชั่วโมง'
+  },
+  
+  // Error messages
+  'spot_max_images_alert': {
+    en: 'Maximum 4 images allowed',
+    th: 'อนุญาตไฟล์สูงสุด 4 รูป'
+  },
+  'spot_file_not_image_alert': {
+    en: 'File {{fileName}} is not an image',
+    th: 'ไฟล์ {{fileName}} ไม่ใช่รูปภาพ'
+  },
+  'spot_file_size_exceeded_alert': {
+    en: 'File {{fileName}} exceeds 5MB limit',
+    th: 'ไฟล์ {{fileName}} เกินขนาด 5MB'
+  },
+  'spot_required_fields_error': {
+    en: 'Please fill in all required fields and enable at least one pricing option',
+    th: 'กรุณากรอกข้อมูลที่จำเป็นทั้งหมดและเปิดอย่างน้อยหนึ่งตัวเลือกราคา'
+  },
+  'spot_valid_prices_error': {
+    en: 'Please set valid prices for all enabled pricing options',
+    th: 'กรุณาตั้งราคาที่ถูกต้องสำหรับตัวเลือกราคาที่เปิดใช้งานทั้งหมด'
+  },
+  'spot_one_image_required_error': {
+    en: 'Please add at least one image of your parking spot',
+    th: 'กรุณาเพิ่มรูปภาพของที่จอดรถอย่างน้อยหนึ่งรูป'
+  },
+  'spot_login_required_error': {
+    en: 'You must be logged in to add a parking spot.',
+    th: 'คุณต้องเข้าสู่ระบบเพื่อเพิ่มที่จอดรถ'
+  },
+  'spot_owner_pending_approval_error': {
+    en: 'Your owner account is pending admin approval. You cannot add parking spots yet.',
+    th: 'บัญชีเจ้าของของคุณกำลังรออนุมัติจากผู้ดูแลระบบ คุณยังไม่สามารถเพิ่มที่จอดรถได้'
+  },
+  'spot_creation_failed_error': {
+    en: 'Failed to add parking spot. Please try again.',
+    th: 'ไม่สามารถเพิ่มที่จอดรถได้ กรุณาลองใหม่อีกครั้ง'
+  },
+  'amenity_ev_charging': {
+    en: 'EV Charging',
+    th: 'ชาร์จรถยนต์ไฟฟ้า'
+  },
+  'amenity_cctv': {
+    en: 'CCTV Security',
+    th: 'กล้องวงจรปิด'
+  },
+  'amenity_covered': {
+    en: 'Covered Parking',
+    th: 'ที่จอดรถมีหลังคา'
+  },
+  'amenity_wifi': {
+    en: 'Free WiFi',
+    th: 'WiFi ฟรี'
+  },
+  'amenity_cafe': {
+    en: 'Cafe Nearby',
+    th: 'ร้านกาแฟใกล้เคียง'
+  },
+  'amenity_maintenance': {
+    en: 'Car Maintenance',
+    th: 'บริการซ่อมรถ'
+  },
+  'amenities.evCharging': {
+    en: 'EV Charging',
+    th: 'จุดชาร์จรถยนต์ไฟฟ้า'
+  },
+  'amenities.wifi': {
+    en: 'WiFi',
+    th: 'WiFi'
+  },
+  'amenities.cctvSecurity': {
+    en: 'CCTV Security',
+    th: 'กล้องวงจรปิด'
+  },
+  'amenities.covered': {
+    en: 'Covered',
+    th: 'มีหลังคา'
+  },
+  'amenities.elevator': {
+    en: 'Elevator',
+    th: 'ลิฟต์'
+  },
+  'amenities.access24_7': {
+    en: '24/7 Access',
+    th: 'เข้าได้ 24/7'
+  },
+  'amenities.shopping': {
+    en: 'Shopping',
+    th: 'ช้อปปิ้ง'
+  },
+  'amenities.foodCourt': {
+    en: 'Food Court',
+    th: 'ศูนย์อาหาร'
+  },
+  'amenities.cafeNearby': {
+    en: 'Cafe Nearby',
+    th: 'คาเฟ่ใกล้เคียง'
+  },
+  'amenities.valetService': {
+    en: 'Valet Service',
+    th: 'บริการรับจอดรถ'
+  },
+  'amenities.carWash': {
+    en: 'Car Wash',
+    th: 'ล้างรถ'
+  },
+  'amenities.shuttle': {
+    en: 'Shuttle',
+    th: 'รถรับส่ง'
+  },
+  'amenities.storage': {
+    en: 'Storage',
+    th: 'ที่เก็บของ'
+  },
+  'amenities.restroom': {
+    en: 'Restroom',
+    th: 'ห้องน้ำ'
+  },
+  'amenities.accessible': {
+    en: 'Accessible',
+    th: 'เข้าถึงง่าย'
+  },
+  'amenities.secureAccess': {
+    en: 'Secure Access',
+    th: 'เข้าได้อย่างปลอดภัย'
+  },
+  'amenities.smartParking': {
+    en: 'Smart Parking',
+    th: 'ที่จอดรถอัจฉริยะ'
+  },
+  'amenities.payment': {
+    en: 'Payment',
+    th: 'การชำระเงิน'
+  },
+  'amenities.standardParking': {
+    en: 'Standard Parking',
+    th: 'ที่จอดรถมาตรฐาน'
+  },
+
+  // Status for availability
+  'status.full': {
+    en: 'Full',
+    th: 'เต็ม'
+  },
+  'status.available_hours': {
+    en: 'Available within 2 hours',
+    th: 'ว่างภายใน 2 ชั่วโมงนี้'
+  },
+
+  // Additional card-related translations
+  'open24_7': {
+    en: 'Open 24/7',
+    th: 'เปิด 24/7'
+  },
+  'checkHours': {
+    en: 'Check hours',
+    th: 'ตรวจสอบเวลา'
+  },
+  'bookNow': {
+    en: 'Book Now',
+    th: 'จองเลย'
+  },
+  'scan_qr_payment_amount': {
+    en: 'Scan this QR code with your banking app to make a payment of ${{amount}}',
+    th: 'สแกน QR Code นี้ด้วยแอปธนาคารเพื่อชำระเงินจำนวน ${{amount}}'
+  },
+
+  'hourly_booking': {
+    en: 'Hourly',
+    th: 'รายชั่วโมง'
+  },
+  'daily_booking': {
+    en: 'Daily',
+    th: 'รายวัน'
+  },
+  'monthly_booking': {
+    en: 'Monthly',
+    th: 'รายเดือน'
+  },
 };
 
 type Language = 'en' | 'th';

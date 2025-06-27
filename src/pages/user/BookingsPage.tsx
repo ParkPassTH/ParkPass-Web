@@ -82,6 +82,27 @@ export const BookingsPage: React.FC = () => {
     setShowIncompleteAlert(false);
   };
 
+  // Function to check if booking is expired
+  const isBookingExpired = (booking: any) => {
+    if (booking.status === 'completed' || booking.status === 'cancelled') {
+      return false; // Already in final state
+    }
+    
+    const now = new Date();
+    const endTime = new Date(booking.end_time);
+    
+    // Check if booking has passed its end time
+    return now > endTime;
+  };
+
+  // Function to get effective booking status (including expired check)
+  const getEffectiveBookingStatus = (booking: any) => {
+    if (isBookingExpired(booking) && (booking.status === 'confirmed' || booking.status === 'pending')) {
+      return 'expired';
+    }
+    return booking.status;
+  };
+
   const fetchBookings = async () => {
     if (!user) return;
     
@@ -92,7 +113,7 @@ export const BookingsPage: React.FC = () => {
         .select(`
           *,
           parking_spots:spot_id (
-            id, name, address, price, price_type, images, latitude, longitude
+            id, name, address, price, price_type, pricing, images, latitude, longitude
           ),
           reviews:reviews_booking_id_fkey (
             id
@@ -115,13 +136,15 @@ export const BookingsPage: React.FC = () => {
     }
   };
 
-  const currentBookings = bookings.filter(b => 
-    b.status === 'pending' || b.status === 'confirmed' || b.status === 'active'
-  );
+  const currentBookings = bookings.filter(b => {
+    const effectiveStatus = getEffectiveBookingStatus(b);
+    return effectiveStatus === 'pending' || effectiveStatus === 'confirmed' || effectiveStatus === 'active' || effectiveStatus === 'expired';
+  });
   
-  const pastBookings = bookings.filter(b => 
-    b.status === 'completed' || b.status === 'cancelled'
-  );
+  const pastBookings = bookings.filter(b => {
+    const effectiveStatus = getEffectiveBookingStatus(b);
+    return effectiveStatus === 'completed' || effectiveStatus === 'cancelled';
+  });
 
   const getBookingStatusColor = (status: string) => {
     switch (status) {
@@ -130,6 +153,7 @@ export const BookingsPage: React.FC = () => {
       case 'pending': return 'bg-yellow-100 text-yellow-800';
       case 'completed': return 'bg-gray-100 text-gray-800';
       case 'cancelled': return 'bg-red-100 text-red-800';
+      case 'expired': return 'bg-orange-100 text-orange-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -306,9 +330,10 @@ export const BookingsPage: React.FC = () => {
     const spot = booking.parking_spots;
     const startDateTime = formatDateTime(booking.start_time);
     const endDateTime = formatDateTime(booking.end_time);
+    const effectiveStatus = getEffectiveBookingStatus(booking);
 
-    // Don't show payment status for cancelled bookings
-    const shouldShowPaymentStatus = booking.status !== 'cancelled';
+    // Don't show payment status for cancelled bookings or expired bookings
+    const shouldShowPaymentStatus = booking.status !== 'cancelled' && effectiveStatus !== 'expired';
 
     return (
       <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100">
@@ -323,10 +348,24 @@ export const BookingsPage: React.FC = () => {
             </div>
             <div className="flex flex-wrap gap-2">
               <div className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
-                getBookingStatusColor(booking.status)
+                getBookingStatusColor(effectiveStatus)
               }`}>
-                {t(booking.status)}
+                {t(effectiveStatus)}
               </div>
+              
+              {/* Booking Type Badge */}
+              <div className="inline-flex px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                {booking.booking_type === 'hourly' && ' Hourly'}
+                {booking.booking_type === 'daily' && ' Daily'}
+                {booking.booking_type === 'monthly' && ' Monthly'}
+                {!booking.booking_type && ' Hourly'} {/* Fallback for old bookings */}
+              </div>
+              
+              {effectiveStatus === 'expired' && (
+                <div className="inline-flex px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                  {t('booking_expired_notice')}
+                </div>
+              )}
               {shouldShowPaymentStatus && (
                 <div className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
                   getPaymentStatusColor(booking.payment_status)
@@ -355,19 +394,41 @@ export const BookingsPage: React.FC = () => {
           </div>
         </div>
 
-        {(booking.status === 'active' || booking.status === 'confirmed' || booking.status === 'pending') && (
+        {/* Booking Type Details */}
+        <div className="bg-gray-50 rounded-lg p-3 mb-4">
+          <div className="text-xs text-gray-500 mb-1">Booking Type</div>
+          <div className="flex items-center space-x-2">
+            {booking.booking_type === 'hourly' && (
+              <>
+                <span className="text-sm font-medium text-gray-900"> Hourly Booking</span>
+                <span className="text-xs text-gray-500">({Math.ceil((new Date(booking.end_time).getTime() - new Date(booking.start_time).getTime()) / (1000 * 60 * 60))} hours)</span>
+              </>
+            )}
+            {booking.booking_type === 'daily' && (
+              <>
+                <span className="text-sm font-medium text-gray-900"> Daily Booking</span>
+                <span className="text-xs text-gray-500">({Math.ceil((new Date(booking.end_time).getTime() - new Date(booking.start_time).getTime()) / (1000 * 60 * 60 * 24))} days)</span>
+              </>
+            )}
+            {booking.booking_type === 'monthly' && (
+              <>
+                <span className="text-sm font-medium text-gray-900"> Monthly Booking</span>
+                <span className="text-xs text-gray-500">({Math.ceil((new Date(booking.end_time).getTime() - new Date(booking.start_time).getTime()) / (1000 * 60 * 60 * 24 * 30))} months)</span>
+              </>
+            )}
+            {!booking.booking_type && (
+              <span className="text-sm font-medium text-gray-900"> Hourly Booking</span>
+            )}
+          </div>
+        </div>
+
+        {(effectiveStatus === 'active' || effectiveStatus === 'confirmed' || effectiveStatus === 'pending') && (
           <div className="bg-blue-50 rounded-lg p-4 mb-4">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center space-x-2 text-blue-900 font-semibold">
                 <QrCode className="h-5 w-5" />
                 <span>{t('entry_access')}</span>
               </div>
-              {/* <button
-                onClick={() => setShowQRModal(booking.id)}
-                className="bg-blue-600 text-white px-3 py-1 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
-              >
-                Show QR
-              </button> */}
             </div>
             <div className="grid grid-cols-1 gap-3">
               <div className="bg-white rounded-lg p-3 text-center">
@@ -380,23 +441,25 @@ export const BookingsPage: React.FC = () => {
                   {t('copy_pin')}
                 </button>
               </div>
-              {/* <div className="bg-white rounded-lg p-3 text-center">
-                <div className="text-xs text-gray-600 mb-1">QR Code</div>
-                <div className="text-sm font-medium text-blue-900">Available</div>
-                <button
-                  onClick={() => copyToClipboard(booking.qr_code, 'QR Code')}
-                  className="text-xs text-blue-600 hover:text-blue-800 mt-1"
-                >
-                  Copy Code
-                </button>
-              </div> */}
             </div>
+          </div>
+        )}
+
+        {effectiveStatus === 'expired' && (
+          <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4">
+            <div className="flex items-center space-x-2 text-orange-800 font-semibold mb-2">
+              <AlertCircle className="h-5 w-5" />
+              <span>{t('booking_expired')}</span>
+            </div>
+            <p className="text-sm text-orange-700">
+              {t('booking_expired_message')}
+            </p>
           </div>
         )}
 
         {showActions && (
           <div className="flex flex-wrap gap-2">
-            {booking.status === 'active' && (
+            {effectiveStatus === 'active' && (
               <>
                 <button 
                   onClick={() => navigateToParking(booking)}
@@ -405,13 +468,6 @@ export const BookingsPage: React.FC = () => {
                   <Navigation className="h-4 w-4" />
                   <span>{t('get_directions')}</span>
                 </button>
-                {/* <button
-                  onClick={() => setShowExtendModal(booking.id)}
-                  className="flex items-center space-x-1 border border-green-200 text-green-600 px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-50 transition-colors"
-                >
-                  <Clock className="h-4 w-4" />
-                  <span>Extend Time</span>
-                </button> */}
                 <button
                   onClick={() => setShowQRModal(booking.id)}
                   className="flex items-center space-x-1 border border-blue-200 text-blue-600 px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-50 transition-colors"
@@ -421,7 +477,7 @@ export const BookingsPage: React.FC = () => {
                 </button>
               </>
             )}
-            {booking.status === 'confirmed' && (
+            {effectiveStatus === 'confirmed' && (
               <>
                 <button
                   onClick={() => navigateToParking(booking)}
@@ -446,7 +502,7 @@ export const BookingsPage: React.FC = () => {
                 </button>
               </>
             )}
-            {booking.status === 'pending' && (
+            {effectiveStatus === 'pending' && (
               <>
                 <button
                   onClick={() => setShowQRModal(booking.id)}
@@ -464,7 +520,18 @@ export const BookingsPage: React.FC = () => {
                 </button>
               </>
             )}
-            {booking.status === 'completed' && (
+            {effectiveStatus === 'expired' && (
+              <>
+                <Link
+                  to={`/book/${booking.spot_id}`}
+                  className="flex items-center space-x-1 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                >
+                  <Car className="h-4 w-4" />
+                  <span>{t('book_again')}</span>
+                </Link>
+              </>
+            )}
+            {effectiveStatus === 'completed' && (
               <>
                 <Link
                   to={`/book/${booking.spot_id}`}

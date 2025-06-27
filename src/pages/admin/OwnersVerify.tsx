@@ -199,7 +199,12 @@ export const OwnersVerify: React.FC = () => {
               <div><b>{t('name')}:</b> {selectedSpot.name}</div>
               <div><b>{t('address')}:</b> {selectedSpot.address}</div>
               <div><b>{t('description')}:</b> {selectedSpot.description}</div>
-              <div><b>{t('price')}:</b> {selectedSpot.price} / {selectedSpot.price_type}</div>
+              <div><b>{t('price')}:</b> 
+                {selectedSpot.pricing?.hour?.enabled && `${selectedSpot.pricing.hour.price}/hour`}
+                {selectedSpot.pricing?.day?.enabled && ` | ${selectedSpot.pricing.day.price}/day`}
+                {selectedSpot.pricing?.month?.enabled && ` | ${selectedSpot.pricing.month.price}/month`}
+                {!selectedSpot.pricing && `${selectedSpot.price} / ${selectedSpot.price_type}`}
+              </div>
               <div><b>{t('amenities')}:</b> {(selectedSpot.amenities || []).join(', ')}</div>
               <div><b>{t('images')}:</b></div>
               <div className="flex gap-2 mb-2 flex-wrap">

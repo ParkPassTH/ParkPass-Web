@@ -25,6 +25,11 @@ export interface ParkingSpot {
   available_slots: number;
   price: number;
   price_type: string;
+  pricing?: {
+    hour: { enabled: boolean; price: number };
+    day: { enabled: boolean; price: number };
+    month: { enabled: boolean; price: number };
+  };
   amenities: string[];
   images: string[];
   operating_hours?: any;
@@ -180,20 +185,33 @@ class SupabaseService {
       .select('*')
       .eq('is_active', true);
 
-    if (filters?.maxPrice) {
-      query = query.lte('price', filters.maxPrice);
-    }
-
     const { data, error } = await query.order('created_at', { ascending: false });
 
     if (error) throw error;
     
-    // Transform database field names to match our interface
-    const transformedData = (data || []).map(spot => ({
+    // Transform database field names to match our interface and apply filters
+    let transformedData = (data || []).map(spot => ({
       ...spot,
       totalSlots: spot.total_slots || 1,  // Transform total_slots to totalSlots
       openingHours: spot.operating_hours  // Transform operating_hours to openingHours
     }));
+
+    // Apply maxPrice filter using the new pricing structure
+    if (filters?.maxPrice) {
+      transformedData = transformedData.filter(spot => {
+        if (spot.pricing) {
+          // Check if any enabled pricing option is within the max price
+          const pricing = spot.pricing;
+          return (
+            (pricing.hour?.enabled && pricing.hour.price <= filters.maxPrice!) ||
+            (pricing.day?.enabled && pricing.day.price <= filters.maxPrice!) ||
+            (pricing.month?.enabled && pricing.month.price <= filters.maxPrice!)
+          );
+        }
+        // Fallback to legacy price field
+        return spot.price <= filters.maxPrice!;
+      });
+    }
     
     return transformedData as ParkingSpot[];
   }
@@ -429,10 +447,6 @@ class SupabaseService {
       supabaseQuery = supabaseQuery.or(`name.ilike.%${query}%,address.ilike.%${query}%,description.ilike.%${query}%`);
     }
 
-    if (filters?.max_price) {
-      supabaseQuery = supabaseQuery.lte('price', filters.max_price);
-    }
-
     if (filters?.amenities && filters.amenities.length > 0) {
       supabaseQuery = supabaseQuery.contains('amenities', filters.amenities);
     }
@@ -440,7 +454,32 @@ class SupabaseService {
     const { data, error } = await supabaseQuery.order('created_at', { ascending: false });
 
     if (error) throw error;
-    return (data || []) as ParkingSpot[];
+    
+    // Transform and apply filters using the new pricing structure
+    let transformedData = (data || []).map(spot => ({
+      ...spot,
+      totalSlots: spot.total_slots || 1,
+      openingHours: spot.operating_hours
+    }));
+
+    // Apply maxPrice filter using the new pricing structure
+    if (filters?.max_price) {
+      transformedData = transformedData.filter(spot => {
+        if (spot.pricing) {
+          // Check if any enabled pricing option is within the max price
+          const pricing = spot.pricing;
+          return (
+            (pricing.hour?.enabled && pricing.hour.price <= filters.max_price!) ||
+            (pricing.day?.enabled && pricing.day.price <= filters.max_price!) ||
+            (pricing.month?.enabled && pricing.month.price <= filters.max_price!)
+          );
+        }
+        // Fallback to legacy price field
+        return spot.price <= filters.max_price!;
+      });
+    }
+
+    return transformedData as ParkingSpot[];
   }
 }
 

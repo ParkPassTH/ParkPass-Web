@@ -2,12 +2,14 @@ import React from 'react';
 import { useSlotAvailability } from '../hooks/useSlotAvailability';
 import { SlotAvailabilityErrorBoundary } from './SlotAvailabilityErrorBoundary';
 import { useLanguage } from '../contexts/LanguageContext';
+import { BookingType } from '../types';
 
 interface TimeSlotAvailabilityProps {
   spotId: string;
   totalSlots: number;
   date: string; // YYYY-MM-DD format
-  timeSlot: string; // HH:MM format
+  timeSlot: string; // HH:MM format (for hourly) or date range (for daily/monthly)
+  bookingType: BookingType;
   isBooked: boolean;
   isSelected: boolean;
   onClick: () => void;
@@ -19,6 +21,7 @@ export const TimeSlotAvailability: React.FC<TimeSlotAvailabilityProps> = ({
   totalSlots,
   date,
   timeSlot,
+  bookingType,
   isBooked,
   isSelected,
   onClick,
@@ -40,6 +43,7 @@ export const TimeSlotAvailability: React.FC<TimeSlotAvailabilityProps> = ({
         totalSlots={totalSlots}
         date={date}
         timeSlot={timeSlot}
+        bookingType={bookingType}
         isBooked={isBooked}
         isSelected={isSelected}
         onClick={onClick}
@@ -54,6 +58,7 @@ const TimeSlotAvailabilityInner: React.FC<TimeSlotAvailabilityProps> = ({
   totalSlots,
   date,
   timeSlot,
+  bookingType,
   isBooked,
   isSelected,
   onClick,
@@ -70,7 +75,8 @@ const TimeSlotAvailabilityInner: React.FC<TimeSlotAvailabilityProps> = ({
       spotId,
       totalSlots,
       date,
-      timeSlot
+      timeSlot,
+      bookingType
     });
     availableSlots = hookResult.availableSlots ?? totalSlots;
     bookedSlots = hookResult.bookedSlots ?? 0;
@@ -80,15 +86,10 @@ const TimeSlotAvailabilityInner: React.FC<TimeSlotAvailabilityProps> = ({
     // Keep fallback values
   }
 
-  // Debug logging
-  console.log(`TimeSlot ${timeSlot}:`, { 
-    loading, 
-    availableSlots, 
-    bookedSlots, 
-    totalSlots, 
-    isBooked, 
-    spotId: spotId?.substring(0, 8) + '...' 
-  });
+  // Debug logging (only for important slots or errors)
+  if (availableSlots === 0 || bookedSlots > 0) {
+    console.log(`TimeSlot ${timeSlot}: ${availableSlots}/${totalSlots} available, ${bookedSlots} booked`);
+  }
 
   // Return simple fallback if data is invalid
   if (!spotId || !date || !timeSlot) {
@@ -112,21 +113,17 @@ const TimeSlotAvailabilityInner: React.FC<TimeSlotAvailabilityProps> = ({
     // Calculate end time of the slot (1 hour later)
     const slotEndDateTime = new Date(slotStartDateTime.getTime() + 60 * 60 * 1000);
     
-    // Debug logging for midnight and early morning slots
-    if (timeSlot === '00:00' || timeSlot === '01:00') {
-      console.log(`TimeSlotAvailability hasMinimumTime debug for ${timeSlot}:`, {
-        now: now.toISOString(),
-        slotStart: slotStartDateTime.toISOString(),
-        slotEnd: slotEndDateTime.toISOString(),
-        remainingMs: slotEndDateTime.getTime() - now.getTime(),
-        remainingMinutes: Math.floor((slotEndDateTime.getTime() - now.getTime()) / (1000 * 60)),
-        hasMinTime: Math.floor((slotEndDateTime.getTime() - now.getTime()) / (1000 * 60)) >= 30
-      });
-    }
-    
     // Check if there are at least 30 minutes remaining until the slot ends
     const remainingMs = slotEndDateTime.getTime() - now.getTime();
     const remainingMinutes = Math.floor(remainingMs / (1000 * 60));
+    
+    // Debug logging for midnight and early morning slots only
+    /* if ((timeSlot === '00:00' || timeSlot === '01:00') && remainingMinutes < 60) {
+      console.log(`TimeSlotAvailability hasMinimumTime debug for ${timeSlot}:`, {
+        remainingMinutes,
+        hasMinTime: remainingMinutes >= 30
+      });
+    } */
     
     return remainingMinutes >= 30;
   };
@@ -134,6 +131,24 @@ const TimeSlotAvailabilityInner: React.FC<TimeSlotAvailabilityProps> = ({
   // Check if time slot is in the past
   const isPastTime = () => {
     const now = new Date();
+    
+    // For daily/monthly bookings, check if the date is past today or if today but past noon
+    if (bookingType === 'daily' || bookingType === 'monthly') {
+      const today = new Date().toISOString().split('T')[0];
+      const currentHour = now.getHours();
+      
+      // If it's a past date, can't book
+      if (date < today) {
+        return true;
+      }
+      
+      // If it's today, check if it's past noon (12:00)
+      if (date === today && currentHour >= 12) {
+        return true;
+      }
+      
+      return false;
+    }
     
     // Parse date and time more reliably
     const [year, month, day] = date.split('-').map(Number);
@@ -148,18 +163,9 @@ const TimeSlotAvailabilityInner: React.FC<TimeSlotAvailabilityProps> = ({
     // This allows booking as long as there's time left in the slot
     const isPast = slotEndDateTime <= now;
     
-    // Debug logging for midnight and early morning slots
-    if (timeSlot === '00:00' || timeSlot === '01:00') {
-      console.log(`TimeSlotAvailability isPastTime debug for ${timeSlot}:`, {
-        date,
-        timeSlot,
-        now: now.toISOString(),
-        nowLocal: now.toString(),
-        slotStart: slotStartDateTime.toISOString(),
-        slotEnd: slotEndDateTime.toISOString(),
-        isPast: slotEndDateTime <= now,
-        remainingMinutes: Math.floor((slotEndDateTime.getTime() - now.getTime()) / (1000 * 60))
-      });
+    // Debug logging for midnight and early morning slots only
+    if ((timeSlot === '00:00' || timeSlot === '01:00') && isPast) {
+      console.log(`TimeSlotAvailability isPastTime debug for ${timeSlot}: slot ended`);
     }
     
     return isPast;
@@ -202,6 +208,25 @@ const TimeSlotAvailabilityInner: React.FC<TimeSlotAvailabilityProps> = ({
 
   const isClickable = !loading && !isBooked && availableSlots > 0 && !isPastTime() && hasMinimumTime();
 
+  // Function to get display text for slot
+  const getDisplayText = () => {
+    if (bookingType === 'daily' || bookingType === 'monthly') {
+      const dateObj = new Date(date);
+      return {
+        primary: dateObj.getDate().toString(), // Day number
+        secondary: dateObj.toLocaleDateString('en-US', { weekday: 'short' }), // Day name
+        tertiary: dateObj.toLocaleDateString('en-US', { month: 'short' }) // Month name
+      };
+    }
+    return {
+      primary: timeSlot,
+      secondary: '',
+      tertiary: ''
+    };
+  };
+
+  const displayText = getDisplayText();
+
   // Add error handling for the render
   if (loading) {
     return (
@@ -216,7 +241,7 @@ const TimeSlotAvailabilityInner: React.FC<TimeSlotAvailabilityProps> = ({
       >
         <div className="flex flex-col space-y-1 sm:space-y-1.5">
           <div className="font-semibold text-xs sm:text-sm lg:text-base">
-            {timeSlot}
+            {displayText.primary}
           </div>
           <div className="text-xs sm:text-sm">
             <span className="flex items-center space-x-1">
@@ -248,7 +273,17 @@ const TimeSlotAvailabilityInner: React.FC<TimeSlotAvailabilityProps> = ({
         <div className="flex flex-col space-y-1 sm:space-y-1.5">
           <div className="flex justify-between items-center">
             <div className="font-semibold text-xs sm:text-sm lg:text-base flex items-center space-x-1">
-              <span>{timeSlot}</span>
+              {bookingType === 'daily' || bookingType === 'monthly' ? (
+                <div className="flex items-center space-x-1">
+                  <span className="text-2xl sm:text-3xl font-bold">{displayText.primary}</span>
+                  <div className="text-right">
+                    <div className="text-xs sm:text-sm font-medium">{displayText.secondary}</div>
+                    <div className="text-xs opacity-75">{displayText.tertiary}</div>
+                  </div>
+                </div>
+              ) : (
+                <span>{displayText.primary}</span>
+              )}
               {!loading && !isPastTime() && !isBooked && (
                 <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-current rounded-full opacity-60 animate-pulse"></div>
               )}
@@ -284,18 +319,6 @@ const TimeSlotAvailabilityInner: React.FC<TimeSlotAvailabilityProps> = ({
                     {availableSlots}/{totalSlots}
                     <span className="hidden sm:inline"> {t('available')}</span>
                   </span>
-                  {getSlotStatus() === 'limited' && (
-                    <span className="text-xs bg-current bg-opacity-20 px-1 sm:px-1.5 py-0.5 rounded">
-                      <span className="hidden sm:inline">{t('limited')}</span>
-                      <span className="sm:hidden">!</span>
-                    </span>
-                  )}
-                  {getSlotStatus() === 'full' && (
-                    <span className="text-xs bg-current bg-opacity-20 px-1 sm:px-1.5 py-0.5 rounded">
-                      <span className="hidden sm:inline">{t('full')}</span>
-                      <span className="sm:hidden">X</span>
-                    </span>
-                  )}
                 </div>
                 {bookedSlots > 0 && (
                   <div className="text-xs opacity-75 hidden sm:block">

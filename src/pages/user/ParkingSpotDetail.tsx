@@ -213,8 +213,36 @@ export const ParkingSpotDetail: React.FC = () => {
     );
   }
 
-  const formatPrice = (price: number, type: string) => {
-    return `$${price}/${type}`;
+  const formatPrice = (spot: any) => {
+    // Handle multiple pricing types
+    const pricing = spot.pricing;
+    const prices = [];
+    
+    // Add hourly rate if available
+    if (pricing?.hour?.enabled || spot.price) {
+      const hourlyPrice = pricing?.hour?.price || spot.price;
+      prices.push(`$${hourlyPrice}/hour`);
+    }
+    
+    // Add daily rate if available
+    if (pricing?.day?.enabled) {
+      prices.push(`$${pricing.day.price}/day`);
+    }
+    
+    // Add monthly rate if available
+    if (pricing?.month?.enabled) {
+      prices.push(`$${pricing.month.price}/month`);
+    }
+    
+    // Return formatted price string
+    if (prices.length > 1) {
+      return prices.join(' | ');
+    } else if (prices.length === 1) {
+      return prices[0];
+    } else {
+      // Fallback to original format
+      return `$${spot.price}/${spot.price_type}`;
+    }
   };
 
   const amenityIconMap: Record<string, React.ElementType> = {
@@ -363,7 +391,7 @@ export const ParkingSpotDetail: React.FC = () => {
               </div>
             )}
             <div className="absolute top-4 right-4 bg-white px-3 py-2 rounded-full font-semibold text-lg shadow-md">
-              {formatPrice(spot.price, spot.price_type)}
+              {formatPrice(spot)}
             </div>
           </div>
 
@@ -381,8 +409,13 @@ export const ParkingSpotDetail: React.FC = () => {
                 <div className="flex items-center space-x-2">
                   <div className="flex items-center space-x-1">
                     <Star className="h-5 w-5 text-yellow-400 fill-current" />
-                    <span className="font-semibold">{spot.rating || '0.0'}</span>
-                    <span className="text-gray-500">({spot.review_count || 0} {t('reviews')})</span>
+                    <span className="font-semibold">
+                      {reviews.length > 0 
+                        ? (reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length).toFixed(1)
+                        : '0.0'
+                      }
+                    </span>
+                    <span className="text-gray-500">({reviews.length} {t('reviews')})</span>
                   </div>
                 </div>
               </div>

@@ -1,22 +1,50 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, CardContent } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
-import { Badge } from '../../components/ui/badge';
-import { MapPin, Car, Wifi, Camera, Shield } from 'lucide-react';
+import { MapPin } from 'lucide-react';
 import { useParkingSpots } from '../../hooks/useSupabase';
 import { ParkingSpot } from '../../services/supabaseService';
-import { SearchFilters } from '../../components/SearchFilters';
+import { SearchFilters, SearchFilters as SearchFiltersType } from '../../components/SearchFilters';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import { LatLngExpression } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { ParkingSpotCard } from '../../components/ParkingSpotCard';
-import { useMemo } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { LanguageSwitcher } from '../../components/LanguageSwitcher';
 import { Navbar } from '../../components/Navbar';
 import { convertSupabaseToUI } from '../../utils/adaptors';
+import { supabase } from '../../lib/supabase';
+
+// Interface สำหรับ 2-hour availability
+interface Next2HoursAvailability {
+  availableSlots: number;
+  totalSlots: number;
+  isFullyBooked: boolean;
+  nextAvailableTime?: string;
+}
+
+// เพิ่ม custom CSS สำหรับ popup
+const customPopupStyle = `
+  .custom-popup .leaflet-popup-content-wrapper {
+    padding: 0;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+  .custom-popup .leaflet-popup-content {
+    margin: 0;
+    padding: 0;
+  }
+  .custom-popup .leaflet-popup-tip {
+    border-top-color: white;
+  }
+`;
+
+// เพิ่ม style element
+if (typeof document !== 'undefined') {
+  const styleElement = document.createElement('style');
+  styleElement.textContent = customPopupStyle;
+  document.head.appendChild(styleElement);
+}
 
 // Fix for default markers in React Leaflet
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -42,27 +70,106 @@ export const HomePage = () => {
   const [filteredSpots, setFilteredSpots] = useState<ParkingSpot[]>([]);
   const [showMap, setShowMap] = useState(true);
   const [mapCenter, setMapCenter] = useState<LatLngExpression>([13.7563, 100.5018]); // Default to Bangkok
-  const [isGettingLocation, setIsGettingLocation] = useState(false);
+  const [spotsAvailability, setSpotsAvailability] = useState<{[key: string]: Next2HoursAvailability}>({});
   const navigate = useNavigate();
 
-// Filter spots ที่ผ่านการอนุมัติเท่านั้น (ใช้ is_active แทน is_approved)
-  const activeSpots = spots.filter(spot => spot.is_active === true);
+  // ฟังก์ชันคำนวณความพร้อมใช้งาน 2 ชั่วโมงข้างหน้า
+  const calculateNext2HoursAvailability = async (spot: ParkingSpot): Promise<Next2HoursAvailability> => {
+    const now = new Date();
+    const twoHoursLater = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+    
+    try {
+      // ดึงการจองที่ทับซ้อนกับ 2 ชั่วโมงข้างหน้า
+      const { data: bookings } = await supabase
+        .from('bookings')
+        .select('start_time, end_time, booking_type')
+        .eq('spot_id', spot.id)
+        .in('status', ['confirmed', 'pending', 'active'])
+        .or(`start_time.lte.${twoHoursLater.toISOString()},end_time.gte.${now.toISOString()}`);
+
+      if (!bookings) {
+        return {
+          availableSlots: spot.total_slots || 1,
+          totalSlots: spot.total_slots || 1,
+          isFullyBooked: false
+        };
+      }
+
+      // นับจำนวนช่องที่ถูกใช้
+      const usedSlots = bookings.filter(booking => {
+        const bookingStart = new Date(booking.start_time);
+        const bookingEnd = new Date(booking.end_time);
+        return bookingStart < twoHoursLater && bookingEnd > now;
+      }).length;
+
+      const availableSlots = Math.max(0, (spot.total_slots || 1) - usedSlots);
+      
+      return {
+        availableSlots,
+        totalSlots: spot.total_slots || 1,
+        isFullyBooked: availableSlots === 0,
+        nextAvailableTime: availableSlots === 0 ? bookings[0]?.end_time : undefined
+      };
+    } catch (error) {
+      console.error('Error calculating 2-hour availability:', error);
+      return {
+        availableSlots: spot.total_slots || 1,
+        totalSlots: spot.total_slots || 1,
+        isFullyBooked: false
+      };
+    }
+  };
+
+  // ฟังก์ชันจัดรูปแบบราคา
+  const formatSpotPrice = (spot: ParkingSpot) => {
+    const pricing = spot.pricing;
+    const prices = [];
+    
+    // เพิ่มราคาต่อชั่วโมงถ้ามี
+    if (pricing?.hour?.enabled || spot.price) {
+      const hourlyPrice = pricing?.hour?.price || spot.price;
+      prices.push(`฿${Math.floor(hourlyPrice)}/hr`);
+    }
+    
+    // เพิ่มราคาต่อวันถ้ามี
+    if (pricing?.day?.enabled) {
+      prices.push(`฿${Math.floor(pricing.day.price)}/day`);
+    }
+    
+    // เพิ่มราคาต่อเดือนถ้ามี
+    if (pricing?.month?.enabled) {
+      prices.push(`฿${Math.floor(pricing.month.price)}/mo`);
+    }
+    
+    return prices.length > 0 ? prices.join(' • ') : `฿${spot.price}/hr`;
+  };
+
+// Filter spots ที่ผ่านการอนุมัติและพร้อมใช้งานเท่านั้น
+  const activeSpots = useMemo(() => 
+    spots.filter(spot => 
+      spot.is_approved === true && 
+      spot.latitude && 
+      spot.longitude && 
+      spot.name && 
+      spot.address &&
+      spot.total_slots > 0 &&
+      spot.price > 0
+    ), [spots]);
 
   useEffect(() => {
     setFilteredSpots(activeSpots);
-  }, [spots]);
+  }, [activeSpots]);
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
     filterSpots(query, spots);
   };
 
-  const handleFilter = (filters: any) => {
+  const handleFilter = (filters: SearchFiltersType) => {
     filterSpots(searchQuery, spots, filters);
   };
 
   const handleFindNearMe = () => {
-    setIsGettingLocation(true);
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
@@ -75,18 +182,15 @@ export const HomePage = () => {
             return distA - distB;
           });
           setFilteredSpots(sortedSpots);
-          setIsGettingLocation(false);
         },
         (error) => {
           console.error('Error getting location:', error);
           alert(t('location_error_message') || 'Unable to get your location. Please enable location services and try again.');
-          setIsGettingLocation(false);
         },
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
     } else {
       alert(t('geolocation_not_supported') || 'Geolocation is not supported by this browser');
-      setIsGettingLocation(false);
     }
   };
 
@@ -109,8 +213,17 @@ export const HomePage = () => {
     return Array.from(set);
   }, [spots]);
 
-  const filterSpots = (query: string, spotsToFilter: ParkingSpot[], filters?: any) => {
-    let filtered = spotsToFilter.filter(spot => spot.is_active === true);
+  const filterSpots = (query: string, spotsToFilter: ParkingSpot[], filters?: SearchFiltersType) => {
+    // กรองเฉพาะจุดจอดรถที่ผ่านการอนุมัติและมีข้อมูลครบถ้วน
+    let filtered = spotsToFilter.filter(spot => 
+      spot.is_active === true && 
+      spot.latitude && 
+      spot.longitude && 
+      spot.name && 
+      spot.address &&
+      spot.total_slots > 0 &&
+      spot.price > 0
+    );
 
     // Search by name or address
     if (query) {
@@ -121,18 +234,88 @@ export const HomePage = () => {
     }
 
     if (filters) {
-      // Parking Type filter (ใช้ price_type แทน type)
-      if (filters.parkingType && filters.parkingType !== 'All Types') {
-        filtered = filtered.filter(spot =>
-          spot.price_type === filters.parkingType
-        );
+      // Booking Type filter
+      if (filters.bookingType && filters.bookingType.length > 0) {
+        filtered = filtered.filter(spot => {
+          // Parse pricing config to check which booking types are available
+          let pricingConfig: any = {};
+          if (spot.pricing) {
+            if (typeof spot.pricing === 'string') {
+              try {
+                pricingConfig = JSON.parse(spot.pricing);
+              } catch (e) {
+                console.error('Failed to parse pricing config:', e);
+              }
+            } else {
+              pricingConfig = spot.pricing;
+            }
+          }
+          
+          // If no pricing config exists, create default config
+          if (!pricingConfig || Object.keys(pricingConfig).length === 0) {
+            pricingConfig = {
+              hour: { enabled: true, price: spot.price || 50 },
+              day: { enabled: !!(spot as any).daily_price, price: (spot as any).daily_price || (spot.price || 50) * 24 },
+              month: { enabled: !!(spot as any).monthly_price, price: (spot as any).monthly_price || (((spot as any).daily_price || (spot.price || 50) * 24) * 30) }
+            };
+          }
+          
+          // Check if any of the selected booking types are available for this spot
+          return filters.bookingType.some((bookingType: string) => {
+            switch (bookingType) {
+              case 'hourly':
+                return pricingConfig.hour?.enabled;
+              case 'daily':
+                return pricingConfig.day?.enabled;
+              case 'monthly':
+                return pricingConfig.month?.enabled;
+              default:
+                return false;
+            }
+          });
+        });
       }
 
-      // Price filter
-      if (filters.priceRange && filters.priceRange[1] < 500) {
-        filtered = filtered.filter(spot =>
-          spot.price <= filters.priceRange[1]
-        );
+      // Price filter - ปรับปรุงให้ใช้ราคาตาม booking type ที่เลือก
+      if (filters.priceRange) {
+        filtered = filtered.filter(spot => {
+          let spotPrices: number[] = [];
+          
+          // ถ้าเลือก booking type เฉพาะ ใช้ราคาเฉพาะประเภทนั้น
+          if (filters.bookingType && filters.bookingType.length > 0) {
+            filters.bookingType.forEach(bookingType => {
+              let price = 0;
+              if (bookingType === 'hourly') {
+                price = spot.pricing?.hour?.enabled ? spot.pricing.hour.price : spot.price;
+              } else if (bookingType === 'daily') {
+                price = spot.pricing?.day?.enabled ? spot.pricing.day.price : 0;
+              } else if (bookingType === 'monthly') {
+                price = spot.pricing?.month?.enabled ? spot.pricing.month.price : 0;
+              }
+              if (price > 0) spotPrices.push(Math.floor(price));
+            });
+          } else {
+            // ถ้าไม่เลือก booking type ใช้ราคาสูงสุดจากทุกประเภท
+            if (spot.pricing?.hour?.enabled || spot.price) {
+              spotPrices.push(Math.floor(spot.pricing?.hour?.price || spot.price));
+            }
+            if (spot.pricing?.day?.enabled) {
+              spotPrices.push(Math.floor(spot.pricing.day.price));
+            }
+            if (spot.pricing?.month?.enabled) {
+              spotPrices.push(Math.floor(spot.pricing.month.price));
+            }
+            
+            // ถ้าไม่มีราคาใดๆ ใช้ราคาพื้นฐาน
+            if (spotPrices.length === 0) {
+              spotPrices.push(Math.floor(spot.price));
+            }
+          }
+          
+          // ใช้ราคาสูงสุดในการเปรียบเทียบ
+          const maxPrice = Math.max(...spotPrices);
+          return maxPrice >= filters.priceRange[0] && maxPrice <= filters.priceRange[1];
+        });
       }
 
       // Availability filter
@@ -150,13 +333,36 @@ export const HomePage = () => {
       }
 
       // Sorting
-      if (filters.sortBy) {
+      if (filters.sortBy && filters.sortBy !== 'default') {
         switch (filters.sortBy) {
           case 'price_low':
             filtered.sort((a, b) => a.price - b.price);
             break;
           case 'price_high':
             filtered.sort((a, b) => b.price - a.price);
+            break;
+          case 'name':
+            filtered.sort((a, b) => a.name.localeCompare(b.name));
+            break;
+          case 'distance':
+            // Sort by distance if user location is available
+            if (navigator.geolocation) {
+              navigator.geolocation.getCurrentPosition(
+                (position) => {
+                  const { latitude, longitude } = position.coords;
+                  filtered.sort((a, b) => {
+                    const distA = calculateDistance(latitude, longitude, a.latitude || 0, a.longitude || 0);
+                    const distB = calculateDistance(latitude, longitude, b.latitude || 0, b.longitude || 0);
+                    return distA - distB;
+                  });
+                  setFilteredSpots([...filtered]);
+                },
+                (error) => {
+                  console.error('Error getting location for sorting:', error);
+                }
+              );
+              return; // Exit early since we'll set filtered spots in the callback
+            }
             break;
           default:
             break;
@@ -167,7 +373,25 @@ export const HomePage = () => {
     setFilteredSpots(filtered);
   };
 
-  const displaySpots = filteredSpots.length > 0 ? filteredSpots : activeSpots;
+  const displaySpots = filteredSpots;
+
+  // โหลดข้อมูล availability เมื่อ displaySpots เปลี่ยน
+  useEffect(() => {
+    const loadAvailabilityData = async () => {
+      const availabilityPromises = displaySpots.map(async (spot) => {
+        const availability = await calculateNext2HoursAvailability(spot);
+        return { [spot.id]: availability };
+      });
+      
+      const results = await Promise.all(availabilityPromises);
+      const availabilityMap = results.reduce((acc, curr) => ({ ...acc, ...curr }), {});
+      setSpotsAvailability(availabilityMap);
+    };
+
+    if (displaySpots.length > 0) {
+      loadAvailabilityData();
+    }
+  }, [displaySpots]);
 
   const handleSpotClick = (spotId: string) => {
     navigate(`/spot/${spotId}`);
@@ -253,29 +477,62 @@ export const HomePage = () => {
               />
               
               {/* Add markers for each parking spot */}
-              {displaySpots.map((spot: ParkingSpot) => (
-                <Marker 
-                  key={spot.id} 
-                  position={[spot.latitude || 0, spot.longitude || 0]}
-                >
-                  <Popup>
-                    <div className="p-1">
-                      <h3 className="font-semibold">{spot.name}</h3>
-                      <p className="text-sm">{spot.address}</p>
-                      <p className="text-sm font-medium text-blue-600">${spot.price}/{spot.price_type}</p>
-                      <p className="text-xs mt-1">
-                        {spot.available_slots} {t('of_total_spots_available')} {spot.total_slots} {t('spots_available')}
-                      </p>
-                      <button 
-                        onClick={() => handleSpotClick(spot.id)}
-                        className="mt-2 text-xs text-blue-600 hover:text-blue-800"
-                      >
-                        {t('view_details')}
-                      </button>
-                    </div>
-                  </Popup>
-                </Marker>
-              ))}
+              {displaySpots.map((spot: ParkingSpot) => {
+                const availability = spotsAvailability[spot.id];
+                
+                return (
+                  <Marker 
+                    key={spot.id} 
+                    position={[spot.latitude || 0, spot.longitude || 0]}
+                  >
+                    <Popup className="custom-popup">
+                      <div className="p-2 min-w-[250px]">
+                        <h3 className="font-semibold text-gray-900 mb-1">{spot.name}</h3>
+                        <p className="text-sm text-gray-600 mb-2">{spot.address}</p>
+                        
+                        {/* 2-Hour Availability Badge */}
+                        {availability && (
+                          <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium mb-2 ${
+                            availability.isFullyBooked 
+                              ? 'bg-red-100 text-red-700' 
+                              : availability.availableSlots === availability.totalSlots
+                              ? 'bg-green-100 text-green-700'
+                              : 'bg-yellow-100 text-yellow-700'
+                          }`}>
+                            {availability.availableSlots}/{availability.totalSlots} Available within 2 hours
+                          </div>
+                        )}
+                        
+                        {/* Price Information */}
+                        <p className="text-sm font-medium text-blue-600 mb-2">
+                          {formatSpotPrice(spot)}
+                        </p>
+                        
+                        {/* Current Availability */}
+                        {/* <p className="text-xs text-gray-500 mb-3">
+                          {spot.available_slots} of {spot.total_slots} spots available now
+                        </p> */}
+                        
+                        {/* Action Buttons */}
+                        <div className="flex gap-2">
+                          <button 
+                            onClick={() => handleSpotClick(spot.id)}
+                            className="flex-1 bg-blue-600 text-white text-xs px-3 py-2 rounded hover:bg-blue-700 transition-colors"
+                          >
+                            Book Now
+                          </button>
+                          <button 
+                            onClick={() => handleSpotClick(spot.id)}
+                            className="flex-1 border border-blue-600 text-blue-600 text-xs px-3 py-2 rounded hover:bg-blue-50 transition-colors"
+                          >
+                            View Details
+                          </button>
+                        </div>
+                      </div>
+                    </Popup>
+                  </Marker>
+                );
+              })}
               
               {/* Component to update map view when center changes */}
               <ChangeMapView center={mapCenter} />

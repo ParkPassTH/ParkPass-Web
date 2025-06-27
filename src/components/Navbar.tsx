@@ -3,7 +3,8 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { MapPin, User, Calendar, Settings, Home, LogOut, Bell, Clock, Menu, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
-import { LanguageSwitcher } from './LanguageSwitcher';
+import pushNotificationService from '../services/pushNotificationService';
+
 import { supabase } from '../lib/supabase';
 
 export const Navbar: React.FC = () => {
@@ -37,8 +38,27 @@ export const Navbar: React.FC = () => {
   useEffect(() => {
     if (user) {
       fetchNotifications();
+      initializePushNotifications();
     }
   }, [user]);
+
+  // Initialize push notifications for logged-in user
+  const initializePushNotifications = async () => {
+    if (!user) return;
+    
+    try {
+      console.log('🔔 Initializing push notifications for user:', user.id);
+      const success = await pushNotificationService.init(user.id);
+      
+      if (success) {
+        console.log('✅ Push notifications initialized successfully');
+      } else {
+        console.log('⚠️ Push notifications initialization failed or not supported');
+      }
+    } catch (error) {
+      console.error('❌ Error initializing push notifications:', error);
+    }
+  };
 
   const fetchNotifications = async () => {
     if (!user) return;
@@ -196,8 +216,8 @@ export const Navbar: React.FC = () => {
                 )}
               </div>
 
-              {/* Language Switcher */}
-              <LanguageSwitcher />
+              {/* Language Switcher - Hidden */}
+              {/* <LanguageSwitcher /> */}
 
               {/* User Menu */}
               <div className="relative">
@@ -383,13 +403,13 @@ export const Navbar: React.FC = () => {
                 <span>{t('profile')}</span>
               </Link>
 
-              {/* Language Switcher */}
-              <div className="px-3 py-2">
+              {/* Language Switcher - Hidden */}
+              {/* <div className="px-3 py-2">
                 <div className="flex items-center space-x-2">
                   <span className="text-sm font-medium text-gray-700">{t('language') || 'Language'}:</span>
                   <LanguageSwitcher />
                 </div>
-              </div>
+              </div> */}
 
               {/* Logout */}
               <div className="border-t border-gray-200 pt-2 mt-2">

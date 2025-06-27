@@ -7,6 +7,7 @@ interface UseSlotAvailabilityProps {
   totalSlots: number;
   date?: string; // YYYY-MM-DD format
   timeSlot?: string; // HH:MM format
+  bookingType?: 'hourly' | 'daily' | 'monthly';
 }
 
 interface SlotAvailability {
@@ -63,6 +64,30 @@ class SubscriptionManager {
             }, 100);
           }
         )
+        .on('postgres_changes', 
+          { 
+            event: '*', 
+            schema: 'public', 
+            table: 'parking_availability',
+            filter: `spot_id=eq.${spotId}`
+          }, 
+          (payload) => {
+            console.log('Parking availability change detected for slot availability:', payload);
+            // Notify all subscribers with a delay to prevent rapid refetches
+            setTimeout(() => {
+              const callbacks = this.subscribers.get(channelName);
+              if (callbacks) {
+                callbacks.forEach(cb => {
+                  try {
+                    cb();
+                  } catch (error) {
+                    console.error('Error in subscription callback:', error);
+                  }
+                });
+              }
+            }, 100);
+          }
+        )
         .subscribe();
       
       this.subscriptions.set(channelName, channel);
@@ -92,7 +117,8 @@ export function useSlotAvailability({
   spotId,
   totalSlots,
   date,
-  timeSlot
+  timeSlot,
+  bookingType = 'hourly'
 }: UseSlotAvailabilityProps): SlotAvailability {
   const [availableSlots, setAvailableSlots] = useState(totalSlots);
   const [bookedSlots, setBookedSlots] = useState(0);
@@ -103,56 +129,214 @@ export function useSlotAvailability({
   const calculateAvailability = async () => {
     try {
       setLoading(true);
+      console.log(`🚀 Starting availability calculation for spot: ${spotId}, totalSlots: ${totalSlots}, date: ${date}, timeSlot: ${timeSlot}`);
 
       if (date && timeSlot) {
-        // Calculate for specific time slot
-        const startDateTime = new Date(`${date}T${timeSlot}:00`);
-        const endDateTime = new Date(startDateTime.getTime() + 60 * 60 * 1000); // Add 1 hour
+        // For daily/monthly bookings, we check the whole day
+        if (bookingType === 'daily' || bookingType === 'monthly') {
+          // Calculate for full day
+          const startDateTime = new Date(`${date}T00:00:00+07:00`);
+          const endDateTime = new Date(`${date}T23:59:59+07:00`);
+          
+          console.log(`📅 Daily slot calculation:`, {
+            inputDate: date,
+            bookingType,
+            startDateTimeUTC: startDateTime.toISOString(),
+            endDateTimeUTC: endDateTime.toISOString(),
+            startDateTimeLocal: startDateTime.toLocaleString('en-US', { timeZone: 'Asia/Bangkok' }),
+            endDateTimeLocal: endDateTime.toLocaleString('en-US', { timeZone: 'Asia/Bangkok' })
+          });
 
-        const { data: bookings, error } = await supabase
-          .from('bookings')
-          .select('id, start_time, end_time, status')
-          .eq('spot_id', spotId)
-          .in('status', ['confirmed', 'active'])
-          .lt('start_time', endDateTime.toISOString())
-          .gt('end_time', startDateTime.toISOString());
+          // Check for bookings that overlap with this day
+          const { data: bookings, error: bookingsError } = await supabase
+            .from('bookings')
+            .select('id, start_time, end_time, status, booking_type')
+            .eq('spot_id', spotId)
+            .in('status', ['confirmed', 'active'])
+            .or(`and(start_time.lte.${endDateTime.toISOString()},end_time.gte.${startDateTime.toISOString()})`);
 
-        if (error) {
-          console.error('Error fetching bookings for time slot:', error);
-          if (isMountedRef.current) {
-            setBookedSlots(0);
-            setAvailableSlots(totalSlots);
+          if (bookingsError) {
+            console.error('❌ Error fetching daily bookings:', bookingsError);
           }
-          return;
-        }
 
-        const activeBookingsCount = bookings?.length || 0;
-        console.log(`Slot availability - Spot: ${spotId}, Time: ${timeSlot}, Total: ${totalSlots}, Booked: ${activeBookingsCount}, Available: ${Math.max(0, totalSlots - activeBookingsCount)}`);
-        
-        if (isMountedRef.current) {
-          setBookedSlots(activeBookingsCount);
-          setAvailableSlots(Math.max(0, totalSlots - activeBookingsCount));
+          // Count how many slots are taken for this day
+          let bookedSlotsCount = 0;
+          if (bookings) {
+            bookings.forEach((booking: any) => {
+              // For daily/monthly bookings, each booking takes 1 slot for the entire day
+              // For hourly bookings, we only count if they're on this specific day
+              if (booking.booking_type === 'daily' || booking.booking_type === 'monthly') {
+                bookedSlotsCount += 1;
+              } else if (booking.booking_type === 'hourly') {
+                // Only count hourly bookings that are specifically on this day
+                const bookingStart = new Date(booking.start_time);
+                const bookingDay = bookingStart.toISOString().split('T')[0];
+                if (bookingDay === date) {
+                  bookedSlotsCount += 1;
+                }
+              }
+            });
+          }
+
+          const calculatedAvailable = Math.max(0, totalSlots - bookedSlotsCount);
+          
+          console.log(`📊 Daily availability calculated:`, {
+            totalSlots,
+            bookedSlotsCount,
+            availableSlots: calculatedAvailable,
+            bookings: bookings?.map(b => ({
+              id: b.id,
+              type: b.booking_type,
+              start_time: b.start_time,
+              end_time: b.end_time,
+              status: b.status
+            })) || []
+          });
+
+          if (isMountedRef.current) {
+            setAvailableSlots(calculatedAvailable);
+            setBookedSlots(bookedSlotsCount);
+            setLoading(false);
+          }
+        } else {
+          // Calculate for specific time slot (hourly)
+          const startDateTime = new Date(`${date}T${timeSlot}:00+07:00`);
+          const endDateTime = new Date(startDateTime.getTime() + 60 * 60 * 1000);
+          
+          console.log(`⏰ Time slot calculation:`, {
+            inputDate: date,
+            inputTimeSlot: timeSlot,
+            startDateTimeUTC: startDateTime.toISOString(),
+            endDateTimeUTC: endDateTime.toISOString(),
+            startDateTimeLocal: startDateTime.toLocaleString('en-US', { timeZone: 'Asia/Bangkok' }),
+            endDateTimeLocal: endDateTime.toLocaleString('en-US', { timeZone: 'Asia/Bangkok' })
+          });
+
+          // Check for bookings
+          const { data: bookings, error: bookingsError } = await supabase
+            .from('bookings')
+            .select('id, start_time, end_time, status')
+            .eq('spot_id', spotId)
+            .in('status', ['confirmed', 'active'])
+            .lt('start_time', endDateTime.toISOString())
+            .gt('end_time', startDateTime.toISOString());
+
+          if (bookingsError) {
+            console.error('❌ Error fetching bookings:', bookingsError);
+          }
+
+          console.log(`📋 Bookings query result:`, {
+            count: bookings?.length || 0,
+            query: {
+              spot_id: spotId,
+              status: ['confirmed', 'active'],
+              start_time_lt: endDateTime.toISOString(),
+              end_time_gt: startDateTime.toISOString()
+            },
+            bookings: bookings?.map(b => ({
+              id: b.id,
+              start_time: b.start_time,
+              end_time: b.end_time,
+              status: b.status,
+              start_local: new Date(b.start_time).toLocaleString('en-US', { timeZone: 'Asia/Bangkok' }),
+              end_local: new Date(b.end_time).toLocaleString('en-US', { timeZone: 'Asia/Bangkok' })
+            })) || []
+          });
+          // Query blocked slots (only for hourly bookings)
+          console.log(`🔍 Querying parking_availability table for spot: ${spotId}`);
+          const { data: blockedSlots, error: blockedError } = await supabase
+            .from('parking_availability')
+            .select('id, start_time, end_time, status, slots_affected')
+            .eq('spot_id', spotId)
+            .in('status', ['blocked', 'maintenance']);
+
+          if (blockedError) {
+            console.error('❌ Error fetching blocked slots:', blockedError);
+          }
+
+          // Filter overlapping blocks
+          const overlappingBlocks = blockedSlots?.filter(block => {
+            const blockStart = new Date(block.start_time);
+            const blockEnd = new Date(block.end_time);
+            const hasOverlap = startDateTime < blockEnd && endDateTime > blockStart;
+            
+            console.log(`🔍 Checking overlap for block ${block.id}:`, {
+              blockId: block.id,
+              blockStart: blockStart.toISOString(),
+              blockEnd: blockEnd.toISOString(),
+              blockLocalStart: blockStart.toLocaleString('en-US', { timeZone: 'Asia/Bangkok' }),
+              blockLocalEnd: blockEnd.toLocaleString('en-US', { timeZone: 'Asia/Bangkok' }),
+              slotStart: startDateTime.toISOString(),
+              slotEnd: endDateTime.toISOString(),
+              slotLocalStart: startDateTime.toLocaleString('en-US', { timeZone: 'Asia/Bangkok' }),
+              slotLocalEnd: endDateTime.toLocaleString('en-US', { timeZone: 'Asia/Bangkok' }),
+              hasOverlap,
+              slots_affected: block.slots_affected,
+              overlapCondition: {
+                'slot.start < block.end': startDateTime < blockEnd,
+                'slot.end > block.start': endDateTime > blockStart
+              }
+            });
+            
+            return hasOverlap;
+          }) || [];
+
+          const activeBookingsCount = bookings?.length || 0;
+          const blockedSlotsCount = overlappingBlocks?.reduce((total, slot) => total + slot.slots_affected, 0) || 0;
+          const totalUnavailable = activeBookingsCount + blockedSlotsCount;
+          const availableCount = Math.max(0, totalSlots - totalUnavailable);
+          
+          console.log(`🧮 Final calculation for slot ${timeSlot}:`, {
+            totalSlots,
+            activeBookingsCount,
+            overlappingBlocksCount: overlappingBlocks.length,
+            blockedSlotsCount,
+            totalUnavailable,
+            availableCount,
+            calculation: `${totalSlots} - (${activeBookingsCount} + ${blockedSlotsCount}) = ${availableCount}`,
+            bookings: bookings || [],
+            overlappingBlockDetails: overlappingBlocks
+          });
+
+          if (isMountedRef.current) {
+            setAvailableSlots(availableCount);
+            setBookedSlots(activeBookingsCount);
+            setLoading(false);
+          }
         }
 
       } else {
         // Calculate for next 2 hours from now (for parking spot cards)
+        console.log(`🕐 Calculating for next 2 hours (parking spot card)`);
         const now = new Date();
-        const nowISOString = now.toISOString();
-        const twoHoursLater = new Date(now.getTime() + 2 * 60 * 60 * 1000); // Add 2 hours
-        const twoHoursLaterISOString = twoHoursLater.toISOString();
+        const twoHoursLater = new Date(now.getTime() + 2 * 60 * 60 * 1000);
 
-        // Query all bookings that could affect the next 2 hours
-        // Get bookings that overlap with the next 2 hours window
-        const { data: bookings, error } = await supabase
-          .from('bookings')
-          .select('id, start_time, end_time, status')
-          .eq('spot_id', spotId)
-          .in('status', ['confirmed', 'active'])
-          .lt('start_time', twoHoursLaterISOString)
-          .gt('end_time', nowISOString);
+        console.log(`⏰ Time range:`, {
+          now: now.toISOString(),
+          twoHoursLater: twoHoursLater.toISOString(),
+          nowLocal: now.toLocaleString('en-US', { timeZone: 'Asia/Bangkok' }),
+          twoHoursLaterLocal: twoHoursLater.toLocaleString('en-US', { timeZone: 'Asia/Bangkok' })
+        });
 
-        if (error) {
-          console.error('Error fetching bookings for next 2 hours:', error);
+        // Query bookings and blocked slots
+        const [bookingsResult, blockedResult] = await Promise.all([
+          supabase
+            .from('bookings')
+            .select('id, start_time, end_time, status')
+            .eq('spot_id', spotId)
+            .in('status', ['confirmed', 'active'])
+            .lt('start_time', twoHoursLater.toISOString())
+            .gt('end_time', now.toISOString()),
+          
+          supabase
+            .from('parking_availability')
+            .select('id, start_time, end_time, status, slots_affected')
+            .eq('spot_id', spotId)
+            .in('status', ['blocked', 'maintenance'])
+        ]);
+
+        if (bookingsResult.error) {
+          console.error('❌ Error fetching bookings:', bookingsResult.error);
           if (isMountedRef.current) {
             setBookedSlots(0);
             setAvailableSlots(totalSlots);
@@ -160,60 +344,79 @@ export function useSlotAvailability({
           return;
         }
 
-        // Calculate the minimum available slots in the next 2 hours
-        // We'll check availability at different time points to find the worst-case scenario
+        if (blockedResult.error) {
+          console.error('❌ Error fetching blocked slots:', blockedResult.error);
+        }
+
+        const bookings = bookingsResult.data || [];
+        const blockedSlots = blockedResult.data || [];
+
+        console.log(`📋 Next 2 hours bookings:`, {
+          count: bookings.length,
+          bookings: bookings.map(b => ({
+            id: b.id,
+            start: b.start_time,
+            end: b.end_time,
+            status: b.status
+          }))
+        });
+
+        console.log(`🚫 Next 2 hours blocked slots:`, {
+          count: blockedSlots.length,
+          blocks: blockedSlots.map(b => ({
+            id: b.id,
+            start: b.start_time,
+            end: b.end_time,
+            status: b.status,
+            slots_affected: b.slots_affected
+          }))
+        });
+
+        // Calculate minimum available slots in the next 2 hours
         let minAvailableSlots = totalSlots;
         
-        // Check availability at multiple time points within the 2-hour window
         const checkPoints = [
-          now, // Right now
-          new Date(now.getTime() + 30 * 60 * 1000), // +30 minutes
-          new Date(now.getTime() + 60 * 60 * 1000), // +1 hour
-          new Date(now.getTime() + 90 * 60 * 1000), // +1.5 hours
-          twoHoursLater // +2 hours
+          now,
+          new Date(now.getTime() + 30 * 60 * 1000),
+          new Date(now.getTime() + 60 * 60 * 1000),
+          new Date(now.getTime() + 90 * 60 * 1000),
+          twoHoursLater
         ];
-
-        console.log(`\n🔍 Checking slot availability for spot ${spotId}:`);
-        console.log(`📅 Current time: ${now.toLocaleString()}`);
-        console.log(`📅 Time window: ${now.toLocaleString()} - ${twoHoursLater.toLocaleString()}`);
-        console.log(`🏗️ Total slots: ${totalSlots}`);
-        console.log(`📋 Found ${bookings?.length || 0} bookings that overlap with time window:`);
-        
-        bookings?.forEach((booking, index) => {
-          console.log(`  ${index + 1}. Booking ID: ${booking.id}, Time: ${new Date(booking.start_time).toLocaleString()} - ${new Date(booking.end_time).toLocaleString()}, Status: ${booking.status}`);
-        });
 
         for (const checkTime of checkPoints) {
           const checkTimeISO = checkTime.toISOString();
           
-          // Count bookings active at this specific time
-          const activeBookings = bookings?.filter(booking => 
+          const activeBookings = bookings.filter(booking => 
             booking.start_time <= checkTimeISO && booking.end_time > checkTimeISO
-          ) || [];
+          );
           
-          const activeAtThisTime = activeBookings.length;
-          const availableAtThisTime = Math.max(0, totalSlots - activeAtThisTime);
+          const activeBlockedSlots = blockedSlots.filter(block => {
+            const blockStart = new Date(block.start_time);
+            const blockEnd = new Date(block.end_time);
+            return checkTime >= blockStart && checkTime < blockEnd;
+          }).reduce((total, block) => total + block.slots_affected, 0);
           
-          console.log(`⏰ ${checkTime.toLocaleString()}: ${activeAtThisTime} active bookings, ${availableAtThisTime} slots available`);
-          if (activeBookings.length > 0) {
-            activeBookings.forEach(booking => {
-              console.log(`    - Booking ${booking.id}: ${new Date(booking.start_time).toLocaleString()} - ${new Date(booking.end_time).toLocaleString()}`);
-            });
-          }
+          const totalUnavailable = activeBookings.length + activeBlockedSlots;
+          const availableAtThisTime = Math.max(0, totalSlots - totalUnavailable);
           
           minAvailableSlots = Math.min(minAvailableSlots, availableAtThisTime);
         }
-
-        console.log(`✅ Final result: ${minAvailableSlots} slots available (minimum in next 2 hours)\n`);
+        
+        console.log(`🧮 Final calculation for next 2 hours:`, {
+          totalSlots,
+          minAvailableSlots,
+          bookedSlots: totalSlots - minAvailableSlots
+        });
         
         if (isMountedRef.current) {
           setBookedSlots(totalSlots - minAvailableSlots);
           setAvailableSlots(minAvailableSlots);
+          console.log(`✅ State updated (next 2hrs): availableSlots=${minAvailableSlots}, bookedSlots=${totalSlots - minAvailableSlots}`);
         }
       }
 
     } catch (err) {
-      console.error('Error calculating availability:', err);
+      console.error('❌ Error calculating availability:', err);
       if (isMountedRef.current) {
         setBookedSlots(0);
         setAvailableSlots(totalSlots);
@@ -221,6 +424,7 @@ export function useSlotAvailability({
     } finally {
       if (isMountedRef.current) {
         setLoading(false);
+        console.log(`✅ Loading complete for ${timeSlot || 'next2hrs'}`);
       }
     }
   };
@@ -258,7 +462,7 @@ export function useSlotAvailability({
         callbackRef.current = null;
       }
     };
-  }, [spotId, totalSlots, date, timeSlot]);
+  }, [spotId, totalSlots, date, timeSlot, bookingType]);
 
   return { availableSlots, bookedSlots, loading };
 }

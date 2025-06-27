@@ -18,6 +18,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Navbar } from '../components/Navbar';
+import pushNotificationService from '../services/pushNotificationService';
 import type { Profile, Vehicle } from '../lib/supabase';
 
 export const ProfilePage: React.FC = () => {
@@ -26,7 +27,6 @@ export const ProfilePage: React.FC = () => {
   const [userProfile, setUserProfile] = useState<Profile | null>(null);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [showAddVehicle, setShowAddVehicle] = useState(false);
   const [showEditVehicle, setShowEditVehicle] = useState<string | null>(null);
   const [vehicleFormData, setVehicleFormData] = useState({
@@ -37,6 +37,9 @@ export const ProfilePage: React.FC = () => {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [pushNotificationSupported, setPushNotificationSupported] = useState(false);
+  const [pushNotificationPermission, setPushNotificationPermission] = useState<NotificationPermission>('default');
+  const [testingPushNotification, setTestingPushNotification] = useState(false);
 
   // Get the current user from AuthContext
   const { user, profile, signOut } = useAuth();
@@ -47,6 +50,7 @@ export const ProfilePage: React.FC = () => {
     }
     
     fetchVehicles();
+    checkPushNotificationSupport();
   }, [profile]);
 
   const fetchVehicles = async () => {
@@ -216,6 +220,51 @@ export const ProfilePage: React.FC = () => {
     }
   };
 
+  const checkPushNotificationSupport = () => {
+    // @ts-ignore
+    const isSupported = pushNotificationService?.isSupported();
+    setPushNotificationSupported(isSupported);
+    setPushNotificationPermission(Notification.permission);
+  };
+
+  const testPushNotification = async () => {
+    if (!user) return;
+    
+    setTestingPushNotification(true);
+    try {
+      // @ts-ignore
+      const success = await pushNotificationService?.testNotification(user.id);
+      if (success) {
+        alert('✅ Test push notification sent! Check your notifications.');
+      } else {
+        alert('❌ Failed to send test push notification. Check console for details.');
+      }
+    } catch (error) {
+      console.error('Error testing push notification:', error);
+      alert('❌ Error testing push notification. Check console for details.');
+    } finally {
+      setTestingPushNotification(false);
+    }
+  };
+
+  const enablePushNotifications = async () => {
+    if (!user) return;
+    
+    try {
+      // @ts-ignore
+      const success = await pushNotificationService?.init(user.id);
+      if (success) {
+        setPushNotificationPermission(Notification.permission);
+        alert('✅ Push notifications enabled successfully!');
+      } else {
+        alert('❌ Failed to enable push notifications. Check console for details.');
+      }
+    } catch (error) {
+      console.error('Error enabling push notifications:', error);
+      alert('❌ Error enabling push notifications. Check console for details.');
+    }
+  };
+
   const ProfileSection = () => (
     <div className="space-y-6">
       <div className="bg-white rounded-xl shadow-md p-6">
@@ -233,7 +282,7 @@ export const ProfilePage: React.FC = () => {
               <input type="file" accept="image/*" className="hidden" />
             </label>
           </form>
-</div>
+        </div>
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-lg font-semibold text-gray-900">{t('personal_information')}</h3>
           {/* <button className="flex items-center space-x-2 text-blue-600 hover:text-blue-800 transition-colors">
@@ -502,31 +551,44 @@ export const ProfilePage: React.FC = () => {
       <div className="bg-white rounded-xl shadow-md p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-6">Account Settings</h3>
         <div className="space-y-6">
+          {/* Push Notifications Section */}
           <div className="flex items-center justify-between py-4 border-b border-gray-200">
             <div className="flex items-center space-x-3">
               <Bell className="h-5 w-5 text-gray-600" />
               <div>
-                <p className="font-medium text-gray-900">Notifications</p>
-                <p className="text-sm text-gray-600">Receive booking alerts and updates</p>
+                <p className="font-medium text-gray-900">Push Notifications</p>
+                <p className="text-sm text-gray-600">
+                  {!pushNotificationSupported && "Not supported on this browser"}
+                  {pushNotificationSupported && pushNotificationPermission === 'granted' && "Enabled - Get real-time booking updates"}
+                  {pushNotificationSupported && pushNotificationPermission === 'denied' && "Blocked - Please enable in browser settings"}
+                  {pushNotificationSupported && pushNotificationPermission === 'default' && "Enable to receive real-time updates"}
+                </p>
               </div>
             </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input type="checkbox" defaultChecked className="sr-only peer" />
-              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-            </label>
-          </div>
-          <div className="flex items-center justify-between py-4 border-b border-gray-200">
-            <div className="flex items-center space-x-3">
-              <Shield className="h-5 w-5 text-gray-600" />
-              <div>
-                <p className="font-medium text-gray-900">Two-Factor Authentication</p>
-                <p className="text-sm text-gray-600">Add an extra layer of security</p>
-              </div>
+            <div className="flex space-x-2">
+              {pushNotificationSupported && pushNotificationPermission === 'granted' && (
+                <button
+                  onClick={testPushNotification}
+                  disabled={testingPushNotification}
+                  className="px-3 py-1 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                >
+                  {testingPushNotification ? 'Testing...' : 'Test'}
+                </button>
+              )}
+              {pushNotificationSupported && pushNotificationPermission !== 'granted' && (
+                <button
+                  onClick={enablePushNotifications}
+                  className="px-3 py-1 text-sm bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+                >
+                  Enable
+                </button>
+              )}
+              {!pushNotificationSupported && (
+                <span className="text-sm text-gray-500">Not Available</span>
+              )}
             </div>
-            <button className="text-blue-600 hover:text-blue-800 font-medium transition-colors">
-              Enable
-            </button>
           </div>
+          
           <div className="flex items-center justify-between py-4">
             <div className="flex items-center space-x-3">
               <LogOut className="h-5 w-5 text-red-600" />
@@ -584,7 +646,7 @@ export const ProfilePage: React.FC = () => {
             {t('my_profile')}
           </h1>
           <p className="text-gray-600">
-            {t('profile_desc') || 'Manage your account settings and preferences'}
+          {/*   {t('profile_desc') || 'Manage your account settings and preferences'} */}
           </p>
         </div>
         <div className="grid lg:grid-cols-4 gap-8">

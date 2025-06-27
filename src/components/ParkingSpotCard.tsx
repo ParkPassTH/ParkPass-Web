@@ -24,9 +24,37 @@ export const ParkingSpotCard: React.FC<ParkingSpotCardProps> = ({ spot }) => {
     totalSlots: spot.totalSlots || 1
   });
 
-  const formatPrice = (price: number, type: string) => {
-    const translatedType = t(`${type}_rate`) || type;
-    return `฿${price}/${translatedType}`;
+  const formatPrice = (spot: ParkingSpot) => {
+    // Handle multiple pricing types
+    const pricing = spot.pricing;
+    const prices = [];
+    
+    // Add hourly rate if available
+    if (pricing?.hour?.enabled || spot.price) {
+      const hourlyPrice = pricing?.hour?.price || spot.price;
+      prices.push(`฿${Math.floor(hourlyPrice)}/${t('hour_rate')}`);
+    }
+    
+    // Add daily rate if available
+    if (pricing?.day?.enabled) {
+      prices.push(`฿${Math.floor(pricing.day.price)}/${t('day_rate')}`);
+    }
+    
+    // Add monthly rate if available
+    if (pricing?.month?.enabled) {
+      prices.push(`฿${Math.floor(pricing.month.price)}/${t('month_rate')}`);
+    }
+    
+    // Return formatted price string
+    if (prices.length > 1) {
+      return prices.join(' | ');
+    } else if (prices.length === 1) {
+      return prices[0];
+    } else {
+      // Fallback to original format
+      const translatedType = t(`${spot.priceType || 'hour'}_rate`) || spot.priceType;
+      return `฿${Math.floor(spot.price)}/${translatedType}`;
+    }
   };
 
   const handleBookNow = (e: React.MouseEvent) => {
@@ -227,7 +255,7 @@ export const ParkingSpotCard: React.FC<ParkingSpotCardProps> = ({ spot }) => {
           />
           <div className="absolute top-3 right-3">
             <div className="bg-white px-3 py-2 rounded-full text-sm font-bold text-gray-900 shadow-md">
-              {formatPrice(spot.price, spot.priceType || 'hour')}
+              {formatPrice(spot)}
             </div>
           </div>
         </div>
@@ -237,11 +265,14 @@ export const ParkingSpotCard: React.FC<ParkingSpotCardProps> = ({ spot }) => {
             <h3 className="text-lg font-semibold text-gray-900 line-clamp-1">
               {spot.name}
             </h3>
-            <div className="flex items-center space-x-1 text-sm">
-              <Star className="h-4 w-4 text-yellow-400 fill-current" />
-              <span className="text-gray-700">{spot.rating || '0.0'}</span>
-              <span className="text-gray-500">({spot.reviewCount || 0})</span>
-            </div>
+            {/* ซ่อนการแสดงผลรีวิวเนื่องจากข้อมูลเป็น default values */}
+            {spot.reviewCount > 0 && (
+              <div className="flex items-center space-x-1 text-sm">
+                <Star className="h-4 w-4 text-yellow-400 fill-current" />
+                <span className="text-gray-700">{spot.rating || '0.0'}</span>
+                <span className="text-gray-500">({spot.reviewCount || 0})</span>
+              </div>
+            )}
           </div>
           
           <div className="flex items-center space-x-1 text-gray-600 mb-3">
