@@ -219,7 +219,7 @@ export const BookingsPage: React.FC = () => {
   };
 
   const updateSpotRating = async (spotId: string) => {
-    await fetch('$apiBase/api/update-spot-rating', {
+    await fetch(`${apiBase}/api/update-spot-rating`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ spot_id: spotId }),

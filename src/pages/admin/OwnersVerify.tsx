@@ -42,7 +42,7 @@ export const OwnersVerify: React.FC = () => {
   // อนุมัติ/ปฏิเสธ owner
     const handleVerifyOwner = async (ownerId: string, approved: boolean) => {
       try {
-        const res = await fetch('${apiBase}/api/verify-owner', {
+        const res = await fetch(`${apiBase}/api/verify-owner`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ownerId, approved }),
@@ -69,7 +69,7 @@ export const OwnersVerify: React.FC = () => {
   // อนุมัติ/ปฏิเสธจุดจอด
   const handleVerifySpot = async (spotId: string, approved: boolean) => {
     try {
-      const res = await fetch('${apiBase}/api/verify-spot', {
+      const res = await fetch(`${apiBase}/api/verify-spot`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ spotId, approved }),
