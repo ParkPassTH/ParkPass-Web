@@ -351,7 +351,7 @@ export const BookingPage: React.FC = () => {
       .from('bookings')
       .select('start_time, end_time, status, id, user_id, booking_type')
       .eq('spot_id', spot.id)
-      .in('status', ['confirmed', 'active', 'pending'])
+      .in('status', ['confirmed', 'active'])
       .or(`and(start_time.lte.${endDateUTC},end_time.gte.${startDateUTC})`);
       
     if (error) {
@@ -454,7 +454,7 @@ export const BookingPage: React.FC = () => {
         .from('bookings')
         .select('start_time, end_time, status, id, user_id')
         .eq('spot_id', spot.id)
-        .in('status', ['confirmed', 'active', 'pending']) // เพิ่ม pending
+        .in('status', ['confirmed', 'active']) // เพิ่ม pending
         .gte('start_time', `${startDate}T00:00:00`)
         .lt('start_time', `${startDate}T23:59:59`);
         
@@ -499,7 +499,7 @@ export const BookingPage: React.FC = () => {
         .from('bookings')
         .select('start_time, end_time, status, id, user_id, booking_type')
         .eq('spot_id', spot.id)
-        .in('status', ['confirmed', 'active', 'pending'])
+        .in('status', ['confirmed', 'active'])
         .gte('start_time', startDateUTC)
         .lte('end_time', endDateUTC);
         
