@@ -86,8 +86,8 @@ const translations: Translations = {
     th: 'เริ่มต้นตอนนี้'
   },
   'making_parking_simple': {
-    en: '© 2024 ParkPass. Making parking simple and profitable.',
-    th: '© 2024 ParkPass ทำให้การจอดรถง่ายและมีกำไร'
+    en: '© 2025 ParkPass. Making parking simple and profitable.',
+    th: '© 2025 ParkPass ทำให้การจอดรถง่ายและมีกำไร'
   },
 
   // Search & Filters
