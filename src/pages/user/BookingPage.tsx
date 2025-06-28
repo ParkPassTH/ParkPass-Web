@@ -1518,7 +1518,7 @@ export const BookingPage: React.FC = () => {
               }}
               className="w-full bg-green-600 text-white py-4 px-6 rounded-lg font-semibold hover:bg-green-700 transition-colors shadow-lg text-lg"
             >
-              🗺️ Get Directions to Parking Spot
+              Get Directions to Parking Spot
             </button>
             <button 
               onClick={() => {
