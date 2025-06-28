@@ -208,6 +208,7 @@ export const OwnersVerify: React.FC = () => {
                 {!selectedSpot.pricing && `${selectedSpot.price} / ${selectedSpot.price_type}`}
               </div>
               <div><b>{t('amenities')}:</b> {(selectedSpot.amenities || []).join(', ')}</div>
+              <OwnerSpotCount ownerId={selectedSpot.owner_id} t={t} />
               <div><b>{t('images')}:</b></div>
               <div className="flex gap-2 mb-2 flex-wrap">
                 {(selectedSpot.images || []).length > 0 ? (
@@ -269,6 +270,26 @@ export const OwnersVerify: React.FC = () => {
       )}
       
     </div>
+    </div>
+  );
+};
+
+const OwnerSpotCount: React.FC<{ ownerId: string, t: any }> = ({ ownerId, t }) => {
+  const [count, setCount] = React.useState<number | null>(null);
+
+  React.useEffect(() => {
+    if (!ownerId) return;
+    supabase
+      .from('parking_spots')
+      .select('id', { count: 'exact', head: true })
+      .eq('owner_id', ownerId)
+      .then(({ count }) => setCount(count ?? 0));
+  }, [ownerId]);
+
+  if (count === null) return null;
+  return (
+    <div>
+      <b>{t('total_spots_of_owner') || 'จำนวนจุดจอดของเจ้าของนี้'}:</b> {count}
     </div>
   );
 };
