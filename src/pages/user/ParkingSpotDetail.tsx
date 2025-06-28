@@ -447,9 +447,26 @@ export const ParkingSpotDetail: React.FC = () => {
                   <Calendar className="h-5 w-5" />
                   <span className="font-medium">{t('booking_type')}</span>
                 </div>
-                <div className="font-semibold text-blue-900 capitalize">
-                  {t(`${spot.price_type}_rate`)}
-                </div>
+                  <div className="font-semibold text-blue-900 capitalize">
+                    {(() => {
+                      // รองรับทั้งกรณี pricing เป็น object หรือ string
+                      let pricing = spot.pricing;
+                      if (typeof pricing === 'string') {
+                        try {
+                          pricing = JSON.parse(pricing);
+                        } catch {
+                          pricing = {};
+                        }
+                      }
+                      const types = [];
+                      if (pricing?.hour?.enabled) types.push(t('hour_rate'));
+                      if (pricing?.day?.enabled) types.push(t('day_rate'));
+                      if (pricing?.month?.enabled) types.push(t('month_rate'));
+                      // fallback ถ้าไม่มี pricing object
+                      if (types.length === 0 && spot.price_type) types.push(t(`${spot.price_type}_rate`));
+                      return types.join(' / ');
+                    })()}
+                  </div>
               </div>
               <div className="text-center">
                 <div className="flex items-center justify-center space-x-1 text-sm text-blue-700 mb-2">
