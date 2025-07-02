@@ -130,8 +130,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // The server now handles the sign-in, but we need to inform the client-side Supabase instance
       // about the new session to keep everything in sync and trigger onAuthStateChange.
+      // This will also persist the session in localStorage.
       if (session) {
         await supabase.auth.setSession(session);
+        console.log('✅ Session received from server and set on client.');
       } else {
         // If the server doesn't return a session, it means login failed.
         // The API helper would have already thrown an error for non-OK responses,
@@ -139,17 +141,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error('Sign in failed. Please check your credentials.');
       }
       
-      // onAuthStateChange will handle setting the user and profile
+      // onAuthStateChange will handle setting the user, profile, and loading state.
       console.log('✅ Sign in request successful. Waiting for auth state change.');
 
     } catch (error: any) {
       console.error('❌ Sign in error:', error.message);
-      // Re-throw the error to be caught by the UI component
       setLoading(false); // Stop loading on error
+      // Re-throw the error to be caught by the UI component
       throw error; 
-    } 
-    // NOTE: We no longer set loading to false in a `finally` block.
-    // The onAuthStateChange listener is now responsible for setting loading to false after it completes.
+    }
+    // NOTE: The `finally` block was removed. 
+    // The onAuthStateChange listener is now responsible for setting loading to false after a successful login.
   };
 
   // ปรับ signUp ให้เรียกใช้ Server API
