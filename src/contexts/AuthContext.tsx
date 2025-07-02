@@ -125,11 +125,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signIn = async (email: string, password: string) => {
     setLoading(true);
     try {
-      // Use the server API to sign in and get the full response
-      const response = await api.post('/api/auth/signin', { email, password });
-
-      // The actual session object is nested inside response.data.session
-      const session = response?.data?.session;
+      // Use the server API to sign in. The server returns { session } directly.
+      const { session } = await api.post('/api/auth/signin', { email, password });
 
       // The server now handles the sign-in, but we need to inform the client-side Supabase instance
       // about the new session to keep everything in sync and trigger onAuthStateChange.
