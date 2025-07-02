@@ -125,8 +125,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signIn = async (email: string, password: string) => {
     setLoading(true);
     try {
-      // Use the server API to sign in
-      const { session } = await api.post('/api/auth/signin', { email, password });
+      // Use the server API to sign in and get the full response
+      const response = await api.post('/api/auth/signin', { email, password });
+
+      // The actual session object is nested inside response.data.session
+      const session = response?.data?.session;
 
       // The server now handles the sign-in, but we need to inform the client-side Supabase instance
       // about the new session to keep everything in sync and trigger onAuthStateChange.
@@ -138,7 +141,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // If the server doesn't return a session, it means login failed.
         // The API helper would have already thrown an error for non-OK responses,
         // but as a fallback, we throw a generic error.
-        throw new Error('Sign in failed. Please check your credentials.');
+        throw new Error('Sign in failed or invalid session received from server.');
       }
       
       // onAuthStateChange will handle setting the user, profile, and loading state.
