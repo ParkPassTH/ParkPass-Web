@@ -2,12 +2,50 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase, Profile } from '../lib/supabase';
 
+const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+
+// Helper for API calls
+const api = {
+  get: async (endpoint: string) => {
+    const response = await fetch(`${apiBase}${endpoint}`);
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ message: response.statusText }));
+      throw new Error(errorData.message || 'An error occurred');
+    }
+    return response.json();
+  },
+  post: async (endpoint: string, body: any) => {
+    const response = await fetch(`${apiBase}${endpoint}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ message: response.statusText }));
+      throw new Error(errorData.message || 'An error occurred');
+    }
+    return response.json();
+  },
+  put: async (endpoint: string, body: any) => {
+    const response = await fetch(`${apiBase}${endpoint}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ message: response.statusText }));
+      throw new Error(errorData.message || 'An error occurred');
+    }
+    return response.json();
+  },
+};
+
 interface AuthContextType {
   user: User | null;
   profile: Profile | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, userData: any) => Promise<void>;
+  signUp: (email: string, password: string, userData: any) => Promise<User | null>;
   signOut: () => Promise<void>;
   updateProfile: (updates: Partial<Profile>) => Promise<void>;
   resendConfirmation: (email: string) => Promise<void>;
@@ -28,28 +66,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // ปรับ loadProfile ไม่ setLoading
+  // ปรับ loadProfile ให้ดึงข้อมูลจาก Server API
   const loadProfile = async (userId: string) => {
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
-
-      if (error || !data) {
-        console.warn('Profile not found or error:', error?.message);
-        setProfile(null);
-        setUser(null);
-        await supabase.auth.signOut();
-      } else {
-        setProfile(data);
-      }
-    } catch (err) {
-      console.error('Error loading profile:', err);
+      const data = await api.get(`/api/profile/${userId}`);
+      setProfile(data);
+    } catch (err: any) {
+      console.error('Error loading profile from server:', err.message);
       setProfile(null);
-      setUser(null);
-      await supabase.auth.signOut();
+      // To prevent login loops, we avoid signing out automatically.
+      // The UI should handle cases where a profile is missing.
     }
   };
 
@@ -76,11 +102,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     })();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      async (_, session) => {
         setLoading(true);
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          await loadProfile(session.user.id);
+        const sessionUser = session?.user ?? null;
+        setUser(sessionUser);
+
+        if (sessionUser) {
+          await loadProfile(sessionUser.id);
         } else {
           setProfile(null);
         }
@@ -97,74 +125,49 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signIn = async (email: string, password: string) => {
     setLoading(true);
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      // Use the server API to sign in
+      const { session } = await api.post('/api/auth/signin', { email, password });
 
-      if (error) {
-        // Handle specific error cases
-        if (error.message.includes('Email not confirmed')) {
-          throw new Error('Please check your email and click the confirmation link before signing in. Check your spam folder if you don\'t see the email.');
-        }
-        throw error;
+      // The server now handles the sign-in, but we need to inform the client-side Supabase instance
+      // about the new session to keep everything in sync and trigger onAuthStateChange.
+      if (session) {
+        await supabase.auth.setSession(session);
+      } else {
+        // If the server doesn't return a session, it means login failed.
+        // The API helper would have already thrown an error for non-OK responses,
+        // but as a fallback, we throw a generic error.
+        throw new Error('Sign in failed. Please check your credentials.');
       }
+      
+      // onAuthStateChange will handle setting the user and profile
+      console.log('✅ Sign in request successful. Waiting for auth state change.');
 
-      // For mock mode, simulate successful login
-      if (data.user) {
-        setUser(data.user);
-        await loadProfile(data.user.id);
-        console.log('✅ Sign in successful:', data.user.email);
-      }
     } catch (error: any) {
       console.error('❌ Sign in error:', error.message);
-      setLoading(false);
-      throw error;
-    }
-    // Note: Don't set loading to false here as loadProfile will handle it
+      // Re-throw the error to be caught by the UI component
+      setLoading(false); // Stop loading on error
+      throw error; 
+    } 
+    // NOTE: We no longer set loading to false in a `finally` block.
+    // The onAuthStateChange listener is now responsible for setting loading to false after it completes.
   };
 
-  const signUp = async (email: string, password: string, userData: any) => {
+  // ปรับ signUp ให้เรียกใช้ Server API
+  const signUp = async (email: string, password: string, userData: any): Promise<User | null> => {
     setLoading(true);
     try {
-      // Debug: ตรวจสอบข้อมูลที่ได้รับ
-      console.log('🔍 SignUp userData received:', userData);
-      console.log('🔍 identity_document_url:', userData.identity_document_url);
-
-      const { data, error } = await supabase.auth.signUp({
+      console.log('🔍 Signing up via server with data:', userData);
+      
+      const { user } = await api.post('/api/auth/signup', {
         email,
         password,
-        options: {
-          data: {
-            name: userData.name,
-            role: userData.role || 'user',
-            phone: userData.phone,
-            business_name: userData.businessName,
-            business_address: userData.businessAddress,
-            identity_document_url: userData.identity_document_url || null,
-            verify_status: 'pending'
-          },
-        },
+        userData // Send the whole userData object
       });
 
-      if (error) throw error;
-      
-      if (data.user) {
-        // Debug: ตรวจสอบข้อมูล user metadata ที่ Supabase สร้างให้
-        console.log('🔍 User metadata after signup:', data.user.user_metadata);
-        
-        await supabase.from('profiles').update({
-          name: userData.name,
-          role: userData.role || 'user',
-          phone: userData.phone,
-          business_name: userData.businessName,
-          business_address: userData.businessAddress,
-          identity_document_url: userData.identity_document_url || null,
-          verify_status: 'pending'
-        }).eq('id', data.user.id);
-      }
-      
-      console.log('✅ Sign up successful:', data.user);
+      console.log('✅ Sign up request sent successfully. Waiting for email confirmation.');
+      // The onAuthStateChange listener will handle the user state once confirmed.
+      // Returning the user from the server might be inconsistent with the actual auth state.
+      return user || null; 
       
     } catch (error: any) {
       console.error('❌ Sign up error:', error.message);
@@ -177,40 +180,53 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signOut = async () => {
     setLoading(true);
     try {
-      await supabase.auth.signOut();
+      // Call the server endpoint to handle the sign-out logic
+      await api.post('/api/auth/signout', {});
+
+      // Manually clear local state and trigger a state update for Supabase client
+      await supabase.auth.signOut(); // This clears the local session
       setUser(null);
       setProfile(null);
       
       // Only remove specific items, not the entire localStorage
       localStorage.removeItem('rememberedEmail');
       localStorage.removeItem('rememberedPassword');
+      console.log('✅ Sign out successful.');
+    } catch (error: any) {
+      console.error('❌ Sign out error:', error.message);
+      // Even if server fails, attempt a client-side sign-out to clear the session
+      await supabase.auth.signOut();
+      setUser(null);
+      setProfile(null);
     } finally {
       setLoading(false);
     }
   };
 
+  // ปรับ updateProfile ให้เรียกใช้ Server API
   const updateProfile = async (updates: Partial<Profile>) => {
     if (!user) throw new Error('No user logged in');
-
-    const { error } = await supabase
-      .from('profiles')
-      .update(updates)
-      .eq('id', user.id);
-
-    if (error) throw error;
-
-    // Reload profile
-    await loadProfile(user.id);
+    setLoading(true);
+    try {
+      await api.put(`/api/profile/${user.id}`, updates);
+      // Reload profile to get the latest data
+      await loadProfile(user.id);
+    } catch (error: any) {
+      console.error('❌ Update profile error:', error.message);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
   };
 
   const resendConfirmation = async (email: string) => {
-    const { error } = await supabase.auth.resend({
-      type: 'signup',
-      email: email,
-    });
-
-    if (error) throw error;
-    console.log('✅ Confirmation email resent');
+    try {
+      await api.post('/api/auth/resend-confirmation', { email });
+      console.log('✅ Confirmation email resent successfully.');
+    } catch (error: any) {
+      console.error('❌ Error resending confirmation:', error.message);
+      throw error;
+    }
   };
 
   const value = {

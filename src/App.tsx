@@ -79,7 +79,7 @@ const ProtectedRoute: React.FC<{
         // window.location.reload(); // ถ้าอยาก reload อัตโนมัติ
         localStorage.clear();
         window.location.href = '/login'; // force logout อัตโนมัติ
-      }, 1000); // 2 วินาที
+      }, 10000); // 2 วินาที
     }
     return () => {
       if (timer) clearTimeout(timer);

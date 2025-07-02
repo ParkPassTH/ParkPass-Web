@@ -59,19 +59,7 @@ export const LoginPage: React.FC = () => {
     setError(null);
     setLoading(true);
 
-    let documentUrl: string | null = null;
     try {
-      if (mode === 'owner-register') {
-        if (!documentFile) throw new Error(t('upload_document_error'));
-        const fileName = `documents/${Date.now()}_${documentFile.name}`;
-        const { error: uploadError } = await supabase
-          .storage
-          .from('owner-documents')
-          .upload(fileName, documentFile);
-        if (uploadError) throw uploadError;
-        documentUrl = supabase.storage.from('owner-documents').getPublicUrl(fileName).data.publicUrl;
-      }
-
       if (mode === 'login') {
         if (rememberMe) {
           localStorage.setItem('rememberedEmail', formData.email);
@@ -90,15 +78,56 @@ export const LoginPage: React.FC = () => {
       }
 
       // Registration
-      const userData = {
-        name: formData.name,
-        phone: formData.phone,
-        role: mode === 'owner-register' ? 'owner' : 'user',
-        businessName: formData.businessName,
-        businessAddress: formData.businessAddress,
-        identity_document_url: documentUrl
-      };
-      await signUp(formData.email, formData.password, userData);
+      if (mode === 'owner-register') {
+        if (!documentFile) throw new Error(t('upload_document_error'));
+
+        // Step 1: Sign up user to get an ID
+        const user = await signUp(formData.email, formData.password, {
+          name: formData.name,
+          phone: formData.phone,
+          role: 'owner',
+          businessName: formData.businessName,
+          businessAddress: formData.businessAddress,
+        });
+
+        if (!user?.id) throw new Error('User creation failed.');
+
+        // Step 2: Upload document via server
+        const uploadFormData = new FormData();
+        uploadFormData.append('file', documentFile);
+        uploadFormData.append('userId', user.id);
+
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+        const uploadRes = await fetch(`${apiUrl}/api/owner-documents/upload`, {
+          method: 'POST',
+          body: uploadFormData,
+        });
+
+        if (!uploadRes.ok) {
+          const err = await uploadRes.json();
+          throw new Error(err.error || 'Document upload failed.');
+        }
+        const { url: documentUrl } = await uploadRes.json();
+
+        // Step 3: Update profile with document URL
+        const updateRes = await fetch(`${apiUrl}/api/profile/${user.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ identity_document_url: documentUrl }),
+        });
+
+        if (!updateRes.ok) {
+          const err = await updateRes.json();
+          throw new Error(err.error || 'Failed to update profile with document.');
+        }
+      } else { // customer-register
+        await signUp(formData.email, formData.password, {
+          name: formData.name,
+          phone: formData.phone,
+          role: 'user',
+        });
+      }
+
       setPendingEmail(formData.email);
       setShowEmailConfirmation(true);
 
