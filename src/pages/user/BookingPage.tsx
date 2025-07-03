@@ -2724,33 +2724,78 @@ export const BookingPage: React.FC = () => {
                   <div className="bg-gray-50 rounded-lg p-4">
                     <h4 className="font-semibold text-gray-900 mb-3">{t('booking_summary')}</h4>
                     <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span>{t('date')}:</span>
-                        <span>{startDate}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>{t('start_time')}:</span>
-                        <span>{startTime}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>{t('end_time')}:</span>
-                        <span>{endTime}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>{t('duration')}:</span>
-                        <span>{calculateDuration().toFixed(1)} {t('hours')}</span>
-                      </div>
-                      {selectedSlots.length > 0 && (
-                        <div className="flex justify-between">
-                          <span>{t('selected_slots')}:</span>
-                          <span>{selectedSlots.length} {t('slot')}{selectedSlots.length > 1 ? 's' : ''}</span>
-                        </div>
+                      {bookingType === 'hourly' && (
+                        <>
+                          <div className="flex justify-between">
+                            <span>{t('date')}:</span>
+                            <span>{startDate}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>{t('start_time')}:</span>
+                            <span>{startTime}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>{t('end_time')}:</span>
+                            <span>{endTime}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>{t('duration')}:</span>
+                            <span>{calculateDuration().toFixed(1)} {t('hours')}</span>
+                          </div>
+                          {selectedSlots.length > 0 && (
+                            <div className="flex justify-between">
+                              <span>{t('selected_slots')}:</span>
+                              <span>{selectedSlots.length} {t('slot')}{selectedSlots.length > 1 ? 's' : ''}</span>
+                            </div>
+                          )}
+                          {selectedSlots.some(slot => getRemainingTimeInSlot(slot) < 60) && (
+                            <div className="text-xs text-orange-600 bg-orange-50 p-2 rounded">
+                              ⚠️ {t('prorated_pricing_applied')}
+                            </div>
+                          )}
+                        </>
                       )}
-                      {selectedSlots.some(slot => getRemainingTimeInSlot(slot) < 60) && (
-                        <div className="text-xs text-orange-600 bg-orange-50 p-2 rounded">
-                          ⚠️ {t('prorated_pricing_applied')}
-                        </div>
+
+                      {bookingType === 'daily' && (
+                        <>
+                          <div className="flex justify-between">
+                            <span>{t('booking_type')}:</span>
+                            <span className="font-medium">{t('daily_booking')}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>{t('selected_days_count')}:</span>
+                            <span>{selectedDays.length} {t('day')}{selectedDays.length > 1 ? 's' : ''}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>{t('dates')}:</span>
+                            <span className="text-right max-w-[70%]">
+                              {selectedDays.map(d => new Date(d).toLocaleDateString('en-GB')).join(', ')}
+                            </span>
+                          </div>
+                        </>
                       )}
+
+                      {bookingType === 'monthly' && (
+                        <>
+                          <div className="flex justify-between">
+                            <span>{t('booking_type')}:</span>
+                            <span className="font-medium">{t('monthly_booking')}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>{t('start_date')}:</span>
+                            <span>{startDate}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>{t('end_date')}:</span>
+                            <span>{endDate}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>{t('duration')}:</span>
+                            <span>{monthsToBook} {t('month')}{monthsToBook > 1 ? 's' : ''}</span>
+                          </div>
+                        </>
+                      )}
+
                       <div className="flex justify-between font-semibold text-base pt-2 border-t">
                         <span>{t('total')}:</span>
                         <span>฿{calculateTotal()}</span>
@@ -2814,28 +2859,73 @@ export const BookingPage: React.FC = () => {
                   <div className="bg-gray-50 rounded-lg p-4">
                     <h4 className="font-semibold text-gray-900 mb-3">{t('booking_summary')}</h4>
                     <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span>{t('date')}:</span>
-                        <span>{startDate}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>{t('start_time')}:</span>
-                        <span>{startTime}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>{t('end_time')}:</span>
-                        <span>{endTime}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>{t('duration')}:</span>
-                        <span>{calculateDuration().toFixed(1)} {t('hours')}</span>
-                      </div>
-                      {selectedSlots.length > 0 && (
-                        <div className="flex justify-between">
-                          <span>{t('selected_slots')}:</span>
-                          <span>{selectedSlots.length} {t('slot')}{selectedSlots.length > 1 ? 's' : ''}</span>
-                        </div>
+                      {bookingType === 'hourly' && (
+                        <>
+                          <div className="flex justify-between">
+                            <span>{t('date')}:</span>
+                            <span>{startDate}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>{t('start_time')}:</span>
+                            <span>{startTime}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>{t('end_time')}:</span>
+                            <span>{endTime}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>{t('duration')}:</span>
+                            <span>{calculateDuration().toFixed(1)} {t('hours')}</span>
+                          </div>
+                          {selectedSlots.length > 0 && (
+                            <div className="flex justify-between">
+                              <span>{t('selected_slots')}:</span>
+                              <span>{selectedSlots.length} {t('slot')}{selectedSlots.length > 1 ? 's' : ''}</span>
+                            </div>
+                          )}
+                        </>
                       )}
+
+                      {bookingType === 'daily' && (
+                        <>
+                          <div className="flex justify-between">
+                            <span>{t('booking_type')}:</span>
+                            <span className="font-medium">{t('daily_booking')}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>{t('selected_days_count')}:</span>
+                            <span>{selectedDays.length} {t('day')}{selectedDays.length > 1 ? 's' : ''}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>{t('dates')}:</span>
+                            <span className="text-right max-w-[70%]">
+                              {selectedDays.map(d => new Date(d).toLocaleDateString('en-GB')).join(', ')}
+                            </span>
+                          </div>
+                        </>
+                      )}
+
+                      {bookingType === 'monthly' && (
+                        <>
+                          <div className="flex justify-between">
+                            <span>{t('booking_type')}:</span>
+                            <span className="font-medium">{t('monthly_booking')}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>{t('start_date')}:</span>
+                            <span>{startDate}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>{t('end_date')}:</span>
+                            <span>{endDate}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>{t('duration')}:</span>
+                            <span>{monthsToBook} {t('month')}{monthsToBook > 1 ? 's' : ''}</span>
+                          </div>
+                        </>
+                      )}
+
                       <div className="flex justify-between font-semibold text-base pt-2 border-t">
                         <span>{t('total')}:</span>
                         <span>฿{calculateTotal()}</span>
