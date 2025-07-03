@@ -797,7 +797,9 @@ export const OwnerDashboard: React.FC = () => {
         .update({
           status: approved ? 'confirmed' : 'cancelled',
           payment_status: approved ? 'verified' : 'rejected',
-          confirmed_at: approved ? new Date().toISOString() : null
+          confirmed_at: approved ? new Date().toISOString() : null,
+          // Ensure total_cost is passed during the update to satisfy database constraints.
+          total_cost: selectedPayment.booking.total_cost 
         })
         .eq('id', selectedPayment.booking.id);
         
