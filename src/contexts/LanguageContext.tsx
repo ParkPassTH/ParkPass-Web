@@ -640,6 +640,10 @@ const translations: Translations = {
     en: 'Closed for Service',
     th: 'ปิดให้บริการ'
   },
+  'payment_instructions' : {
+    en: 'Payment Instructions',
+    th: 'คำแนะนำการชำระเงิน'
+  },
   'scan_qr_banking_app': {
     en: 'Scan the QR code below with your banking app',
     th: 'สแกนรหัส QR ด้านล่างด้วยแอปธนาคารของคุณ'
@@ -653,8 +657,8 @@ const translations: Translations = {
     th: 'กรุณาติดต่อเจ้าของ'
   },
   'transfer_exact_amount': {
-    en: 'Transfer the exact amount: ฿{amount}',
-    th: 'โอนเงินจำนวนที่แน่นอน: ฿{amount}'
+    en: 'Transfer the exact amount: ฿{{amount}}',
+    th: 'โอนเงินจำนวนที่แน่นอน: ฿{{amount}}'
   },
   'include_booking_reference': {
     en: 'Make sure to include the booking reference in the payment notes',
