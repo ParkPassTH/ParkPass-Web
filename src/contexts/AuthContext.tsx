@@ -80,44 +80,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
-    let isMounted = true;
     setLoading(true);
-    (async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!isMounted) return;
-        setUser(session?.user ?? null);
 
-        if (session?.user) {
-          await loadProfile(session.user.id);
-        } else {
-          setProfile(null);
-        }
-      } catch (err) {
-        setUser(null);
-        setProfile(null);
-      } finally {
-        if (isMounted) setLoading(false);
+    // Function to check the current session and update state
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        await loadProfile(session.user.id);
       }
-    })();
+      setLoading(false);
+    };
 
+    checkSession();
+
+    // Set up a listener for authentication state changes (login, logout)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_, session) => {
-        setLoading(true);
-        const sessionUser = session?.user ?? null;
-        setUser(sessionUser);
-
-        if (sessionUser) {
-          await loadProfile(sessionUser.id);
-        } else {
-          setProfile(null);
-        }
-        setLoading(false);
+      async (event, session) => {
+        console.log(`Auth event: ${event}`);
+        setUser(session?.user ?? null);
+        setProfile(null); // Reset profile first
+        if (session?.user) {
+          setLoading(true);
+          await loadProfile(session.user.id);
+          setLoading(false);
+        } 
       }
     );
 
+    // Cleanup the subscription when the component unmounts
     return () => {
-      isMounted = false;
       subscription.unsubscribe();
     };
   }, []);
