@@ -82,29 +82,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     setLoading(true);
 
-    // Function to check the current session and update state
-    const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        await loadProfile(session.user.id);
-      }
-      setLoading(false);
-    };
-
-    checkSession();
-
-    // Set up a listener for authentication state changes (login, logout)
+    // Rely solely on onAuthStateChange for session management.
+    // It fires once on initialization with the restored session, or null.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log(`Auth event: ${event}`);
         setUser(session?.user ?? null);
-        setProfile(null); // Reset profile first
+        setProfile(null); // Reset profile on any auth change
+
         if (session?.user) {
-          setLoading(true);
           await loadProfile(session.user.id);
-          setLoading(false);
-        } 
+        }
+        
+        // Set loading to false after the initial session check is complete.
+        setLoading(false);
       }
     );
 
