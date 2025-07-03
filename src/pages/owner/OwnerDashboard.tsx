@@ -772,52 +772,55 @@ export const OwnerDashboard: React.FC = () => {
   };
 
   const handleVerifyPayment = async (approved: boolean) => {
-    if (!selectedPayment) return;
-    
+    if (!selectedPayment || !selectedPayment.booking) return;
+
     setVerificationLoading(true);
     setVerificationError(null);
-    
+
     try {
-      // Update payment slip status
+      // Step 1: Fetch the complete, latest booking record from the database.
+      const { data: currentBooking, error: fetchError } = await supabase
+        .from('bookings')
+        .select('*')
+        .eq('id', selectedPayment.booking.id)
+        .single();
+
+      if (fetchError) {
+        throw new Error(`Failed to fetch latest booking details: ${fetchError.message}`);
+      }
+
+      // Step 2: Prepare the full update payload.
+      // We spread the existing booking data and then override the fields we want to change.
+      // This ensures all fields are present, satisfying any database triggers.
+      const updatePayload = {
+        ...currentBooking,
+        status: approved ? 'confirmed' : 'cancelled',
+        payment_status: approved ? 'verified' : 'rejected',
+        confirmed_at: approved ? new Date().toISOString() : null,
+      };
+
+      // Step 3: Update the payment slip status.
       const { error: slipError } = await supabase
         .from('payment_slips')
-        .update({
-          status: approved ? 'verified' : 'rejected',
-          verified_by: profile?.id,
-          verified_at: new Date().toISOString(),
-          notes: approved ? 'Manually approved by admin' : 'Rejected by admin'
-        })
+        .update({ status: approved ? 'verified' : 'rejected' })
         .eq('id', selectedPayment.id);
-        
+
       if (slipError) throw slipError;
-      
-      // Update booking status
+
+      // Step 4: Update the booking with the full payload.
       const { error: bookingError } = await supabase
         .from('bookings')
-        .update({
-          status: approved ? 'confirmed' : 'cancelled',
-          payment_status: approved ? 'verified' : 'rejected',
-          confirmed_at: approved ? new Date().toISOString() : null,
-          // Ensure total_cost is passed during the update to satisfy database constraints.
-          total_cost: selectedPayment.booking.total_cost 
-        })
+        .update(updatePayload)
         .eq('id', selectedPayment.booking.id);
-        
+
       if (bookingError) throw bookingError;
-      
+
       // Refresh pending payments
-      const updatedPayments = await fetchPendingPayments();
-      setPendingPayments(updatedPayments);
-      
-      // Close modal
-      setShowVerificationModal(false);
-      setSelectedPayment(null);
-      
-      // Show success message
-      alert(t(approved ? 'payment_approved_success' : 'payment_rejected_success'));
-    } catch (error: any) {
-      console.error('Error verifying payment:', error);
-      setVerificationError(error.message || 'Failed to process payment verification');
+      fetchPendingPayments();
+      closePaymentModal();
+    } catch (err: any) {
+      console.error('Verification Error:', err);
+      setVerificationError(err.message);
     } finally {
       setVerificationLoading(false);
     }
