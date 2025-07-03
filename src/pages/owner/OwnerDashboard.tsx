@@ -706,144 +706,61 @@ export const OwnerDashboard: React.FC = () => {
     setScanResult(data);
     setScanStatus('processing');
     setScanMessage(t('processing_scan'));
+
     try {
-      const isPin = /^\d{4}$/.test(data);
-      
-      // For PIN, we need to be extra careful about security
-      let searchQuery;
-      if (isPin) {
-        searchQuery = `pin.eq.${data}`;
-      } else {
-        // For QR Code, try to parse JSON first
-        try {
-          const qrData = JSON.parse(data);
-          if (qrData.type === 'parking_verification' && qrData.bookingId && qrData.spotId) {
-            // This is the new secure QR format
-            searchQuery = `id.eq.${qrData.bookingId}`;
-          } else {
-            // Fallback to old format
-            searchQuery = `qr_code.eq.${data}`;
-          }
-        } catch {
-          // Not JSON, treat as old QR format
-          searchQuery = `qr_code.eq.${data}`;
+      let bookingId: string | null = null;
+
+      // Try to parse bookingId from QR data which should be a JSON string
+      try {
+        const qrData = JSON.parse(data);
+        if (qrData.bookingId) {
+          bookingId = qrData.bookingId;
+        } else {
+          throw new Error('Invalid QR code format. Missing bookingId.');
         }
+      } catch (e) {
+        // Handle cases where QR data is not a valid JSON
+        console.error("QR Scan Error: Could not parse bookingId from QR data.", e);
+        throw new Error(t('invalid_qr_format'));
       }
-      
-      const { data: bookingData, error } = await supabase
-        .from('bookings')
-        .select('*')
-        .or(searchQuery)
-        .single();
-        
-      if (error || !bookingData) {
-        setScanStatus('error');
-        setScanMessage(t('invalid_qr_pin'));
-        return;
+
+      if (!bookingId) {
+        throw new Error(t('booking_id_not_found_in_qr'));
       }
-      
-      // Additional security check for QR codes with spot verification
-      if (!isPin) {
-        try {
-          const qrData = JSON.parse(data);
-          if (qrData.type === 'parking_verification' && qrData.spotId) {
-            if (qrData.spotId !== bookingData.spot_id) {
-              setScanStatus('error');
-              setScanMessage(t('qr_not_valid_spot'));
-              return;
-            }
-          }
-        } catch {
-          // Old QR format, no additional check needed
-        }
+
+      // --- Call the server API which contains the correct logic ---
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/bookings/checkin`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ bookingId: bookingId }),
+      });
+
+      const responseData = await response.json();
+
+      if (!response.ok) {
+        // If the server responds with an error, display the server's message
+        throw new Error(responseData.error || 'Failed to process check-in.');
       }
-      
-      const { data: spotData } = await supabase
-        .from('parking_spots')
-        .select('*')
-        .eq('id', bookingData.spot_id)
-        .eq('owner_id', profile?.id)
-        .single();
-        
-      if (!spotData) {
-        setScanStatus('error');
-        setScanMessage(t('booking_not_for_your_spot'));
-        return;
-      }
-      
-      if (bookingData.payment_status !== 'verified') {
-        setScanStatus('error');
-        setScanMessage(t('payment_not_verified'));
-        return;
-      }
-  
-      // ตรวจสอบสถานะ booking ทีละขั้น
-      if (bookingData.status === 'confirmed') {
-        // เปลี่ยนเป็น active (เข้า)
-        const { error: updateError } = await supabase
-          .from('bookings')
-          .update({
-            status: 'active',
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', bookingData.id);
-        if (updateError) throw updateError;
-  
-        // ลด available_slots
-        await supabase
-          .from('parking_spots')
-          .update({
-            available_slots: spotData.available_slots - 1,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', spotData.id);
-  
-        setScanStatus('success');
-        setScanMessage(t('entry_confirmed_booking_active'));
-      } else if (bookingData.status === 'active') {
-        // เปลี่ยนเป็น completed (ออก)
-        const { error: updateError } = await supabase
-          .from('bookings')
-          .update({
-            status: 'completed',
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', bookingData.id);
-        if (updateError) throw updateError;
-  
-        // เพิ่ม available_slots
-        await supabase
-          .from('parking_spots')
-          .update({
-            available_slots: spotData.available_slots + 1,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', spotData.id);
-  
-        setScanStatus('success');
-        setScanMessage(t('exit_confirmed_booking_completed'));
-      } else if (bookingData.status === 'completed') {
-        setScanStatus('success');
-        setScanMessage(t('qr_pin_verified_completed'));
-      } else if (bookingData.status === 'cancelled') {
-        // แสดงสถานะยกเลิกแต่ยังทำการยืนยันได้
-        setScanStatus('success');
-        setScanMessage(t('booking_cancelled_qr_verified', { id: bookingData.id.slice(-6) }));
-      } else {
-        setScanStatus('success');
-        setScanMessage(`${t('qr_pin_verified_status')}: ${bookingData.status.toUpperCase()}`);
-      }
-  
+
+      // --- Display the result from the server ---
+      setScanStatus('success');
+      // Use the message directly from the server's response
+      setScanMessage(responseData.message || 'Action successful!'); 
+
+      // Reload data after showing the result for 2 seconds
       setTimeout(() => {
         setShowQRScanner(false);
         setScanResult(null);
         setScanStatus(null);
         setScanMessage('');
-        loadData();
+        loadData(); // Reload all dashboard data
       }, 2000);
+
     } catch (err: any) {
       setScanStatus('error');
-      setScanMessage(t('scan_error_message', { error: err.message || t('failed_process_scan') }));
+      setScanMessage(err.message || t('failed_process_scan'));
     }
   };
 
